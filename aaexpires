@@ -1,8 +1,14 @@
 #!/bin/bash
 
 # AD account expiration checker
+# works as is if 'net ads search samaccountname=$u accountExpires pwdLastSet'
+# produces a result, otheriwse adapt it for your own needs
 
-# ivan.degtyarenko@aalto.fi, Fri, 25 Sep 2020 16:16:55 +0300
+# initially developed for Aalto University AD
+
+# Copyright (C) 2016 ivan.degtyarenko@aalto.fi
+
+# Released under the GNU General Public License
 
 usage() { 
   echo "Usage:  ${0##*/} [-c]  account1 account2 ..."
