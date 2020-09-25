@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# behaves depending on the script original name
+# if 'cx' then adds x-bit to a file
+# if 'mkbin' picks up a file, copies it to ~/bin and adds
+# x-bit, also makes sure ~/bin exists and ti is in the PATH
+
+# The first touch:
+# $ bash shell_scripts/mkbin shell_scripts/mkbin
+# $ cd ~/bin && ln mkbin cx
+
+if ! [[ $# -eq 1 && -r $1 ]]; then
+  echo "The file does not exist or not readable or file name is missing"
+  echo "Usage: ${0##*/} filename"
+  exit 1
+fi
+
+# file can be any, 'filename' or '../dir/filename' etc
+file=$1
+dbin=$HOME/bin
+
+# we expect either mkbin or cx as a script name
+case "$0" in
+ *mkbin)
+   # create ~/bin if does not exist yet
+   [[ -d $dbin ]] || mkdir $dbin
+   # add it to $PATH if not yet there
+   [[ "$PATH" =~ $dbin ]] || PATH+=:$dbin
+   # copy the file in there and reassigne $file
+   # (can be replaced with ln if on the same filesystem)
+   cp "$file" $dbin && file="$dbin/${file##*/}"
+   ;&
+ *cx)
+   # +x bit is set in both cases mkbin/cx
+   chmod +x $file
+   ;;
+  *)
+   echo "$0: filename unrecognized"
+   exit 1
+   ;;
+esac
+
+# header check/warning
+[[ "$(head -n 1 $file)" =~ '#!/bin/bash' ]] || \
+  echo 'Warning: #!/bin/bash header is missing'
