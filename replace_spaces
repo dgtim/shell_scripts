@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# replaces spaces in the filename(s) with the dashes
+
+# Copyright (C) 2016 ivan.degtyarenko@aalto.fi
+
+# Released under the GNU General Public License
+
+
+if [[ $# == 0 ]]; then
+  echo "Usage: ${0##./} file1 [file2 ...]"
+  exit 1
+fi
+
+# by default 'for' loop goes through $@
+for file; do
+  if [[ "$file" =~ ' ' ]]; then
+    echo "Renaming '$file' to '${file// /_}'"
+    mv "$file" "${file// /_}"
+  fi
+done
