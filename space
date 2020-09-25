@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# shortcut for the 'du' including dot files
+
+# Copyright (C) 2020 ivan.degtyarenko@aalto.fi
+# Released under the GNU General Public License
+
+(($#>1)) && { echo "Usage: ${0##./} [path/to/directory]"; exit 1; }
+
+[ -d $1 ] || { echo $1 directory does not exist; exit 1; }
+
+du -hs ${1:-.}/* ${1:-.}/.[^.]* | sort -h

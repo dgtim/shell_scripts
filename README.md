@@ -7,3 +7,4 @@ See details in the comments
 * groupwritable -- sets group permissions in a requested way, useful as a crontab job
 * bs -- BASH script starter
 * replace_spaces -- replaces spaces in the filename(s) with the dashes
+* space -- shortcut for the 'du', including dot files, sorted
