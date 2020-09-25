@@ -9,6 +9,6 @@
 
 DIR=${1:-.}
 
-[[ -d $DIR ]] || { echo $1 directory does not exist; exit 1; }
+[[ -d $DIR ]] || { echo $DIR directory does not exist; exit 1; }
 
 du -hs $DIR/* $DIR/.[^.]* | sort -h
