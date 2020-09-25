@@ -1,2 +1,3 @@
-# shell_scripts
-Shell scripts for daily use
+# Shell scripts for daily use
+
+* aaexpires -- AD account expiration checker
