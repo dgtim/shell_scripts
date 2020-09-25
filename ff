@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# quick search in the current directory
+
+# Copyright (C) 2020 ivan.degtyarenko@aalto.fi
+# Released under the GNU General Public License
+
+(($#!=1)) && { echo "Usage: ${0##./} search_word"; exit 1; }
+
+find . -iname "*$1*"

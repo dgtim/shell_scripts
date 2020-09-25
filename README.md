@@ -8,3 +8,4 @@ See details in the comments
 * bs -- BASH script starter
 * replace_spaces -- replaces spaces in the filename(s) with the dashes
 * space -- shortcut for the 'du', including dot files, sorted
+* ff -- quick search (=fast find) in the current directory
