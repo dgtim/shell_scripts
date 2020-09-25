@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# easy starter with the BASH script
+# adapt EDIT with the editor of your choice
+
+EDIT='vim +9999999'
+EMAIL='ivan.degtyarenko@aalto.fi'
+
+[[ $# == 0 ]] && { echo Usage: ${0##./} new_bash_script_name; exit 1; }
+
+[ -f $1 ] && { echo $1 already exists; exit 1; }
+
+cat <<EOF > $1
+#!/bin/bash
+
+# Copyright (C) $(date +%Y) $EMAIL
+# Released under the GNU General Public License
+
+
+EOF
+
+chmod +x $1
+
+$EDIT $1
