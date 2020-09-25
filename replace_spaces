@@ -7,10 +7,7 @@
 # Released under the GNU General Public License
 
 
-if [[ $# == 0 ]]; then
-  echo "Usage: ${0##./} file1 [file2 ...]"
-  exit 1
-fi
+(($#==0)) && { echo "Usage: ${0##./} file1 [file2 ...]"; exit 1; }
 
 # by default 'for' loop goes through $@
 for file; do
