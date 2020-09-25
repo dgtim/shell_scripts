@@ -7,6 +7,8 @@
 
 (($#>1)) && { echo "Usage: ${0##./} [path/to/directory]"; exit 1; }
 
-[ -d $1 ] || { echo $1 directory does not exist; exit 1; }
+DIR=${1:-.}
 
-du -hs ${1:-.}/* ${1:-.}/.[^.]* | sort -h
+[[ -d $DIR ]] || { echo $1 directory does not exist; exit 1; }
+
+du -hs $DIR/* $DIR/.[^.]* | sort -h
