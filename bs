@@ -3,6 +3,11 @@
 # easy starter with the BASH script
 # adapt EDIT with the editor of your choice
 
+# Copyright (C) 2017 ivan.degtyarenko@aalto.fi
+
+# Released under the GNU General Public License
+
+
 EDIT='vim +9999999'
 EMAIL='ivan.degtyarenko@aalto.fi'
 
