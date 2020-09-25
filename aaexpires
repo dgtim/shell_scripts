@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# AD account expiration checker
+
+# ivan.degtyarenko@aalto.fi, Fri, 25 Sep 2020 16:16:55 +0300
+
+usage() { 
+  echo "Usage:  ${0##*/} [-c]  account1 account2 ..."
+  echo "Usage:  echo account1 account2 | {0##*/} [-c]"
+  echo "  -c : compact version of output"
+  exit 1
+}
+
+# checking input parameters
+opts=$(getopt "c" "$@") || usage
+set -- $opts
+while :; do
+  case ${1} in
+    -c) shift; COMPACT=1 ;;  # if -c is given, compact output is expected
+    --) shift; break ;;      # remove trailing --
+  esac
+done
+# by now $@ is user names only, if any
+
+# check STDIN
+if [[ -p /dev/stdin ]]; then
+  users=$(</dev/stdin)
+else
+  users=$@
+fi
+
+# if account names are not given, we set $users to $USER
+: ${users:=$USER}
+
+# we go through each item of the list and check account status
+# if no reply, then possibly account is not found
+for u in $users; do
+  accountExpires=''
+  expiresIn=''
+  pwdLastSet=''
+
+  while read line; do
+    # every block ends with the empty line
+    if [[ "$line" == "" ]]; then
+      continue
+    elif [[ "$line" =~ ^accountExpires:\ ([0-9]+)$ ]]; then
+      # AD base time is 01/01/1601 00:00:00
+      # The 'date' gives the # seconds between unixepoch time (1970) and the AD time (1601)
+      # can be also used as a constant '-11644473600'
+      # accountExpires=$(( ${BASH_REMATCH[1]}/10000000 - 11644473600 ))
+      accountExpires=$(( ${BASH_REMATCH[1]}/10000000 + $(date +%s -d 'Jan 1 00:00:00 UTC 1601') ))
+      expiresIn=$(( ($accountExpires - $(date +%s)) / (60*60*24) ))
+      continue
+    elif [[ "$line" =~ ^pwdLastSet:\ ([0-9]+)$ ]]; then
+      pwdLastSet=$(( ${BASH_REMATCH[1]}/10000000 - 11644473600 ))
+      continue
+    elif [[ "$line" =~ ^Got\ 0\ replies$ ]]; then
+      echo No account found: $u
+      continue 2
+    fi
+  done < <(net ads search samaccountname=$u accountExpires pwdLastSet 2>/dev/null)
+
+  # output the results
+  if [[ -z $COMPACT ]]; then
+cat <<EOF
+  $u
+    Account expires: $(date -d "1970-01-01 $accountExpires sec GMT")
+    Days till expiration: $expiresIn
+    Password last changed: $(date -d "1970-01-01 $pwdLastSet sec GMT")
+EOF
+  else
+    echo $u:$(date +%Y-%m-%d -d "1970-01-01 $accountExpires sec GMT"):$expiresIn:$(date +%Y-%m-%d -d "1970-01-01 $pwdLastSet sec GMT")
+  fi
+
+done
