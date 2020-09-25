@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Setting up permissions for the $dir. All subdirectories
+# therein that contain $markfile must be group
+# writable and have s-bit set. Files group writable/readable.
+#
+# For crontab: run 'crontab -e' and add
+# 0 */2 * * 1-5 /path/to/groupwritable directory/path
+
+# Copyright (C) 2018 ivan.degtyarenko@aalto.fi
+
+# Released under the GNU General Public License
+
+
+dir={1:?Usage $0 }
+markfile='.groupwritable'
+
+
+setperm() {
+  # we check files directories before modifying them
+  # thus avoiding extra filesystem load
+
+  #DEBUG='echo'  # if uncommented, makes dry run
+  local d=${1%/*}
+  # set g+rws to the directories
+  $DEBUG find $d -type d ! -perm -g+s,g+w,g+r -exec chmod g+rws {} \;
+  # set u+rwX,g+rwX,o-wx to files
+  $DEBUG find $d -type f \( ! -perm /g+w  -o -perm /o+w \) -exec chmod u+rwX,g+rwX,o-wx {} \;
+}
+
+# needs to be exported so that one could use the function
+# in the subshell, like in case of 'find'
+export -f setperm
+
+# find all the subdirectories with the $markfile and
+# run 'setperm' function for them
+find $dir -name $markfile -exec bash -c 'setperm {}' \;
