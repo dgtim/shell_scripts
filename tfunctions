@@ -1,0 +1,167 @@
+# Copyright (C) 2021 ivan.degtyarenko -at- aalto.fi
+# Released under the GNU General Public License
+
+# set of bash functions for the HPC cluster admin needs
+
+# source it in your .bashrc
+# . tfunctions
+
+# set credentials
+IPMI_USERNAME=XXX
+IPMI_PASSWOR=XXX
+export IPMI_USERNAME IPMI_PASSWORD
+
+resume() {
+  if [ $# -eq 0 ]; then
+    echo "usage:  resume cn[xx,xx-xx],tbxxx,gpu[xxx-xxx]"
+    return 1;
+  else
+    nodelist=$1
+    scontrol update nodename=$nodelist state=resume
+  fi
+}
+
+drain() {
+  if [ $# -lt 2 ]; then
+    echo "usage:  drain wsm[x,xx-xx],gpux the reason"
+    return 1
+  else
+    nodelist=$1
+    reason="${*:2}"
+    scontrol update nodename=$nodelist state=drain reason="$reason"
+  fi
+}
+
+down() {
+  if [ $# -lt 2 ]; then
+    echo "usage:  down wsm[x,xx-xx],gpux the reason"
+    return 1
+  else
+    nodelist=$1
+    reason="${*:2}"
+    scontrol update nodename=$nodelist state=down reason="$reason"
+  fi
+}
+
+pdsh_healthcheck() {
+  if [ $# -lt 1 ]; then
+    echo "usage: pdsh_healthcheck wsm[xx-xx,x],gpuxx"
+    return 1
+  else
+    nodes="$1"
+    pdsh -w $nodes 'nhc && healthcheck -d' | dshbak -c
+  fi
+}
+
+ipmi() {
+  if [ $# -lt 2 ]; then
+    echo "usage:  ipmi wsm[xx-xx,x],gpuxx command args"
+    echo "useful command: 'power {on,off,reset}', 'console', 'led'"
+    return 1
+  else
+    case $2 in
+      console)
+        echo 'Running ipmiconsole; exit with &.'
+        ipmiconsole -u $IPMI_USERNAME -p $IPMI_PASSWORD -h ${1}-ipmi
+        return ;;
+      led)
+        ipmi-chassis -D LAN_2_0 -u $IPMI_USERNAME -p $IPMI_PASSWORD -h $1-ipmi --chassis-identify=FORCE
+        return ;;
+    esac
+    nodelist=$(/bin/hostlist -e -s" " $1)
+    cmd="${*:2}"
+    # 32 jobs max at once
+    parallel -j 32 -i ipmitool -I lanplus -U $IPMI_USERNAME -P $IPMI_PASSWORD -H {}-ipmi $cmd -- $nodelist
+  fi
+}
+
+# Create a SLURM reservation starting immediately.
+reserve() {
+  if [ $# -lt 2 ]; then
+    echo  Create a SLURM reservation starting immediately.
+    echo "usage:  reserve wsm[xx-xx,x],gpuxx reservation_name [user]"
+    echo " (Default user=root)"
+    return 1
+  else
+    nodelist=$1
+    reservation_name=$2
+    if [ $# -lt 3 ]; then
+       res_user=root
+    else
+       res_user=$3
+    fi
+    scontrol create reservation user=$res_user starttime=now duration=infinite flags=maint nodes=$nodelist Reservation=$reservation_name
+  fi
+}
+
+#list SLURM reservations
+reservations(){
+  scontrol show reservation
+}
+
+# Delete a SLURM reservation
+reservation_rm() {
+  if [ $# -lt 1 ]; then
+    echo  Delete a SLURM reservation.
+    echo "usage:  reservation_rm resrvation_name"
+    return 1
+  else
+    reservation_name=$1
+    scontrol delete ReservationName=$reservation_name
+  fi
+}
+
+
+nst() {
+  if [[ $# == 0 ]]; then 
+    echo Reports node status shortly
+    echo Usage: $FUNCNAME node[xx-xx],nodexx,...
+    return 1
+  fi
+  nodelist=$(/bin/hostlist -e -s" " $1)
+  for n in $nodelist; do
+    echo Status of $n
+    echo '  draining reason ' $(sinfo -h -n $n -O reason)
+    echo '  jobs ' $(squeue -w $n -h 2>/dev/null | wc -l)
+    echo '  last job ends in (hours) ' $(( ( $(date -d "$(squeue -h -w $n -O endtime | sort | tail -1)" +%s) - $(date +%s) ) / 3600 ))
+    echo '  power ' $(ipmi $n power status)
+    ST='na'; ssh -o ConnectTimeout=4 -q $n exit &>/dev/null && ST='ok' || ST='fails'
+      echo "  ssh $ST"
+#    if [[ "$ST" == ok ]]; then
+#      NHC='na'; ssh -o ConnectTimeout=10 -q $n nhc &>/dev/null && NHC='ok' || NHC='fails'
+#      echo "  nhc $NHC"
+#    fi
+  done
+}
+
+alias rash='racadm.sh'
+
+tsr() {
+  # requests TSR from a given list of Dell nodes
+  if [[ $# != 1 ]]; then
+    echo "usage:  $FUNCNAME pe[xx-xx,x],gpuxx"
+    return 1
+  else
+    nodelist=$(/bin/hostlist -e -s" " $1)
+    for n in $nodelist; do
+      echo Asking for the service tag on $n-ipmi ...
+      # IPMI_USERNAME=... IPMI_PASSWORD=... defined earlier
+      cmd="/usr/local/sbin/racadm.sh ${n}-ipmi "
+      if tag=$($cmd getsvctag 2>/dev/null); then
+        tag=$(echo $tag|tr -d '\r \n')
+        echo ' ' $tag
+      else
+        echo "Error: Check the name $n-ipmi. It is either wrong or offline."
+        continue
+      fi
+      echo Launching TSR request ...
+      $cmd techsupreport collect -t SysInfo,TTYLog
+      echo
+      echo The TSR report can be checked with:
+      echo "  racadm.sh $n-ipmi jobqueue view"
+      echo when it is ready to download, run:
+      echo "  racadm.sh $n-ipmi techsupreport export -f ${tag}_$(date +'%Y-%m-%d').zip"
+      echo
+    done
+  fi
+}
