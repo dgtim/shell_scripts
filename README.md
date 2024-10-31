@@ -9,3 +9,4 @@ See details in the comments
 * replace_spaces -- replaces spaces in the filename(s) with the dashes
 * space -- shortcut for the 'du', including dot files, sorted
 * ff -- quick search (=fast find) in the current directory
+* shosts -- expands SLURM style node notation like 'xx[1,3,4-6],yy2' into 'xx1 xx3 xx4 xx5 xx6 yy2'
