@@ -7,7 +7,7 @@
 # For crontab: run 'crontab -e' and add
 # 0 */2 * * 1-5 /path/to/groupwritable directory/path
 
-# Copyright (C) 2018 ivan.tervanto@aalto.fi
+# Copyright (C) 2018 ivan.tervanto /at/ aalto.fi
 
 # Released under the GNU General Public License
 
