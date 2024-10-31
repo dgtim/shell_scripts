@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# expanding a string like 'xx[1,5,8-10],yy12,zz[3-5]' into
+# 'xx1 xx5 xx8 xx9 xx10 yy12 zz3 zz4 zz5'
+
+# yet in the test/dev mode
+
+#string='xx[1,5,7,11,14,15],yy12,zz[3-5]'
+string=$1
+# let us collect the expanded list here
+hostlist=()
+
+# picking up [] first
+regex="(([a-z]+)\[([0-9,-]+)\])"
+
+# bash matches only the first entry, so we iterate over the string
+while [[ $string =~ $regex ]]; do
+  # iteration over the list of numbers
+  for i in $(echo ${BASH_REMATCH[3]//,/ }); do
+#    if [[ $i =~ '-' ]]; then
+#      eval echo {${i/-/..}}
+#    else
+      echo i is $i
+      hostlist+=("${BASH_REMATCH[2]}$i")
+#    fi
+  done
+  string=${string/"${BASH_REMATCH[0]}"/}
+done
+
+# picking the rest like xxxNN,yyyNN,...
+regex="([a-z]+[0-9]+)"
+while [[ $string =~ $regex ]]; do
+  hostlist+=(${BASH_REMATCH[1]})
+  string=${string/"${BASH_REMATCH[0]}"/}
+done
+
+# print out the list
+printf "%s " "${hostlist[@]}"
+echo
