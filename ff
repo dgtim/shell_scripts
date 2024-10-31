@@ -2,7 +2,7 @@
 
 # quick search in the current directory
 
-# Copyright (C) 2020 ivan.tervanto@aalto.fi
+# Copyright (C) 2020 ivan.tervanto /at/ aalto.fi
 # Released under the GNU General Public License
 
 (($#!=1)) && { echo "Usage: ${0##./} search_word"; exit 1; }
