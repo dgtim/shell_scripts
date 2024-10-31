@@ -8,26 +8,31 @@
 # Copyright (C) 2024 ivan.tervanto /at/ aalto.fi
 # Released under the GNU General Public License
 
-#string='xx[1,5,7,11,14,15],yy12,zz[3-5]'
+
+# expecting a string as an input parameter
+(($#!=1)) && { echo "Usage: ${0##./} node[1,3-6,8],node4"; exit 1; }
 string=$1
+
 # let us collect the expanded list here
 hostlist=()
 
-# picking up [] first
+# picking up [] entries first
 regex="(([a-z]+)\[([0-9,-]+)\])"
-
-# bash matches only the first entry, so we iterate over the string
+# bash matches only the first entry, so we iterate to get them all
 while [[ $string =~ $regex ]]; do
   # iteration over the list of numbers
-  for i in $(echo ${BASH_REMATCH[3]//,/ }); do
-#    if [[ $i =~ '-' ]]; then
-#      eval echo {${i/-/..}}
-#    else
-      echo i is $i
-      hostlist+=("${BASH_REMATCH[2]}$i")
-#    fi
+  prefix="${BASH_REMATCH[2]}"
+  nums="${BASH_REMATCH[3]}"
+  for i in $(echo ${nums//,/ }); do
+    if [[ $i =~ '-' ]]; then
+      for j in $(eval echo {${i/-/..}}); do
+        hostlist+=("${prefix}$j")
+      done
+    else
+      hostlist+=("${prefix}$i")
+    fi
   done
-  string=${string/"${BASH_REMATCH[0]}"/}
+  string=${string/"${prefix}[${nums}]"/}
 done
 
 # picking the rest like xxxNN,yyyNN,...
