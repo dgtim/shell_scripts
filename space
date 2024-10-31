@@ -2,7 +2,7 @@
 
 # shortcut for the 'du' including dot files
 
-# Copyright (C) 2020 ivan.tervanto@aalto.fi
+# Copyright (C) 2020 ivan.tervanto /at/ aalto.fi
 # Released under the GNU General Public License
 
 (($#>1)) && { echo "Usage: ${0##./} [path/to/directory]"; exit 1; }
