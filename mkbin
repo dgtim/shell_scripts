@@ -9,7 +9,7 @@
 # $ bash shell_scripts/mkbin shell_scripts/mkbin
 # $ cd ~/bin && ln mkbin cx
 
-# Copyright (C) 2016 ivan.tervanto@aalto.fi
+# Copyright (C) 2016 ivan.tervanto /at/ aalto.fi
 
 # Released under the GNU General Public License
 
