@@ -5,6 +5,9 @@
 
 # yet in the test/dev mode
 
+# Copyright (C) 2024 ivan.tervanto /at/ aalto.fi
+# Released under the GNU General Public License
+
 #string='xx[1,5,7,11,14,15],yy12,zz[3-5]'
 string=$1
 # let us collect the expanded list here
