@@ -3,7 +3,7 @@
 # easy starter with the BASH script
 # adapt EDIT with the editor of your choice
 
-# Copyright (C) 2017 ivan.tervanto@aalto.fi
+# Copyright (C) 2017 ivan.tervanto /at/ aalto.fi
 
 # Released under the GNU General Public License
 
