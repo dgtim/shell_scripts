@@ -3,8 +3,6 @@
 # expanding a string like 'xx[1,5,8-10],yy12,zz[3-5]' into
 # 'xx1 xx5 xx8 xx9 xx10 yy12 zz3 zz4 zz5'
 
-# yet in the test/dev mode
-
 # Copyright (C) 2024 ivan.tervanto /at/ aalto.fi
 # Released under the GNU General Public License
 
