@@ -8,7 +8,7 @@
 
 
 # expecting a string as an input parameter
-(($#!=1)) && { echo "Usage: ${0##./} node[1,3-6,8],node4"; exit 1; }
+(($#!=1)) && { echo "Usage: ${0##./} xx[1,3-6,8],yy4"; exit 1; }
 string=$1
 
 # let us collect the expanded list here
