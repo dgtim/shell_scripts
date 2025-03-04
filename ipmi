@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# a wrapper for the ipmitool utliities
+
+# Copyright (C) 2025 ivan.tervanto /at/ aalto.fi
+# Released under the GNU General Public License
+
+# Note: for the command execution on the nodelist we use
+# Tollef Fog Heen's 'parallel' utility from the
+# 'moreutils-parallel' rpm
+
+# Note: for the expanding a string like node[12-14,23],gpu6 to
+# a list of 'node12 node13 node14 gpu23 ...' we use 'shosts'
+# from this the same git repo
+
+# we expect at least two args: the nodelist and a command
+if (($#<2)); then
+  echo
+  echo "usage:  ${0##./} milan[xx-xx,x],gpuxx command args";
+  echo
+  echo '  Selected commands:'
+  echo '    power <on, off, reset, cycle, diag, soft>'
+  echo '    serial  # serial number aka SVC on Dells'
+  echo '    console  # start console'
+  echo '    led | chassis identify force  # make that blue LED blinking'
+  echo '    chassis identify 0  # turn the blue LED off'
+  echo '    fru print  # sysinfo'
+  echo '    sel <list, info, elist, clear>  # SEL log info'
+  echo '    sdr <list, type list, type temperature, type fan, type power supply>  # system health'
+  echo '    mc reset cold  # reset BMC'
+  echo '    mc info  # BMC info incl. firmware version '
+  echo '    mc getsysinfo system_fw_version  # BIOS version'
+  echo '    lan print 1  # BMC net setup' 
+  echo '    sensor list'
+  echo '    chassis bootparam set bootflag force_bios  # force BIOS menu on the next boot'
+  echo '    chassis bootdev pxe options=persistent # pxe boot'
+  echo '    chassis bootparam get 5  # help about bootparams'
+  echo '    chassis bootdev none options=help # help about options'
+  echo  
+  echo '  Setting up a user:'
+  echo '    user set name 3 admin'
+  echo '    user set password 3 KALASANA'
+  echo '    user priv 3 0x4'
+  echo '    channel setaccess 1 3 link=on ipmi=on callin=on privilege=4'
+  echo '    user enable 3'
+  echo
+  exit
+fi
+
+# BMC common credentials: $IPMI_USERNAME $IPMI_PASSWORD
+bmccredfile='/root/bin/.bmccredentials'
+if [ -r "$bmccredfile" ]; then
+  . "$bmccredfile"
+else
+  echo "No $bmccredfile found"
+  exit
+fi
+
+# expand a string like node[12-14,23],gpu6 to a list of 'node12 node13 node14 gpu23 ...'
+nodelist=$(/root/bin/shosts $1)
+cmd="${*:2}"
+
+case $cmd in 
+  console)
+    echo 'Running ipmiconsole; exit with &.';
+    /usr/sbin/ipmiconsole -u $IPMI_USERNAME -p $IPMI_PASSWORD -h ${1}-ipmi
+  ;;
+  led)
+    /usr/bin/ipmitool -I lanplus -U $IPMI_USERNAME -P $IPMI_PASSWORD -H $1-ipmi chassis identify force
+  ;;
+  serial)
+    /usr/bin/ipmitool -I lanplus -U $IPMI_USERNAME -P $IPMI_PASSWORD -H $1-ipmi fru print | /bin/grep -m 1 'Product Serial' 
+  ;;
+  *)
+    /usr/bin/parallel -j 32 -i /usr/bin/ipmitool -I lanplus -U $IPMI_USERNAME -P $IPMI_PASSWORD -H {}-ipmi $cmd -- $nodelist
+esac
