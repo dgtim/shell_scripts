@@ -11,3 +11,4 @@ See details in the comments
 * ff -- quick search (=fast find) in the current directory
 * shosts -- expands SLURM style node notation like 'xx[1,3,4-6],yy2' into 'xx1 xx3 xx4 xx5 xx6 yy2'
 * tfunctions -- bunch of shell functions used for administrative purpose on the cluster
+* ipmi -- wrapper for the ipmitool utilities
