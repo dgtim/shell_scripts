@@ -12,3 +12,5 @@ See details in the comments
 * shosts -- expands SLURM style node notation like 'xx[1,3,4-6],yy2' into 'xx1 xx3 xx4 xx5 xx6 yy2'
 * tfunctions -- bunch of shell functions used for administrative purpose on the cluster
 * ipmi -- wrapper for the ipmitool utilities
+
+All of these materails have been used either for the Linux HPC cluster administration purpose or as demo / exsercises for the Linux Shell tutorial https://aaltoscicomp.github.io/linux-shell/
