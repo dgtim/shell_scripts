@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# a wrapper for the Dell's idracadm7 utility, can be installed on RHEL as
+#
+# curl -O https://linux.dell.com/repo/hardware/dsu/bootstrap.cgi
+# bash bootstrap.cgi
+# yum install srvadmin-idracadm7
+# ln -s /usr/lib64/libssl.so.3.2.2 /usr/lib64/libssl.so
+#
+# the expected binary, see $racadm below
+
+# Copyright (C) 2025 ivan.tervanto /at/ aalto.fi
+# Released under the GNU General Public License
+
+# Note: for the command execution on the nodelist we use
+# Tollef Fog Heen's 'parallel' utility from the
+# 'moreutils-parallel' rpm
+
+# Note: for the expanding a string like node[12-14,23],gpu6 to
+# a list of 'node12 node13 node14 gpu23 ...' we use 'shosts'
+# from this the same git repo
+
+# we expect at least two args: the nodelist and a command
+if (($#<2)); then
+  echo
+  echo "usage:  ${0##./} milan[xx-xx,x],gpuxx racadm_command args";
+  echo
+  echo '  Selected RACADM commands:'
+  echo '    tag | getsvctag'
+  echo '    sel | getsel -o'
+  echo '    clrsel'
+  echo '    swinventory'
+  echo '    getversion [-f bios|idrac]'
+  echo '    serveraction [powercycle|powerdown|powerup|hardreset|powerstatus]'
+  echo '    help'
+  echo
+  exit
+fi
+
+# BMC common credentials: $IPMI_USERNAME $IPMI_PASSWORD
+bmccredfile='/root/bin/.bmccredentials'
+if [ -r "$bmccredfile" ]; then
+  . "$bmccredfile"
+else
+  echo "No $bmccredfile found"
+  exit
+fi
+
+# expand a string like node[12-14,23],gpu6 to a list of 'node12 node13 node14 gpu23 ...'
+nodelist=$(/root/bin/shosts $1)
+parallel='/usr/bin/parallel -j 32 -i'
+racadm="/opt/dell/srvadmin/bin/idracadm7 --nocertwarn -u $IPMI_USERNAME -p $IPMI_PASSWORD"
+cmd="${*:2}"
+
+case $cmd in
+  sel)
+    $parallel $racadm -r {}-ipmi getsel -o -- $nodelist
+  ;;
+  tag)
+    $parallel $racadm -r {}-ipmi getsvctag -- $nodelist
+  ;;
+  *)
+    $parallel $racadm -r {}-ipmi $cmd -- $nodelist
+esac
