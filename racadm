@@ -17,7 +17,7 @@
 # 'moreutils-parallel' rpm
 
 # Note: for the expanding a string like node[12-14,23],gpu6 to
-# a list of 'node12 node13 node14 gpu23 ...' we use 'shosts'
+# a list of 'node12 node13 node14 node23 gpu6 ...' we use 'shosts'
 # from this the same git repo
 
 # we expect at least two args: the nodelist and a command
