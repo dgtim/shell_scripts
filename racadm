@@ -23,13 +23,19 @@ if (($#<2)); then
   echo '    sel | getsel -o'
   echo '    tsr  # techsupreport'
   echo '    clrsel'
+  echo '    getsysinfo # incl MAC addresses'
   echo '    swinventory'
   echo '    getversion [-f bios|idrac]'
   echo '    serveraction [powercycle|powerdown|powerup|hardreset|powerstatus]'
   echo '    jobqueue view|delete -i <jobid>'
   echo '    racreset  # reset idrac'
   echo '    update -f <filename.EXE>'
-  echo '    help'
+  echo '    get -f file.xml -t xml # export config to a file.xml'
+  echo '    get BIOS.ProcSettings # CPU settings at BIOS'
+  echo '    get BIOS.SysProfileSettings # see SysProfile='
+  echo '    get BIOS.BiosBootSettings # boot settings'
+  echo '    get System.Power.Realtime.Power'
+  echo '    help # raw racadm commands list'
   echo
   exit
 fi
