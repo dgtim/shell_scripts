@@ -1,13 +1,6 @@
 #!/bin/bash
 
-# a wrapper for the Dell's idracadm7 utility, can be installed on RHEL as
-#
-# curl -O https://linux.dell.com/repo/hardware/dsu/bootstrap.cgi
-# bash bootstrap.cgi
-# yum install srvadmin-idracadm7
-# ln -s /usr/lib64/libssl.so.3.2.2 /usr/lib64/libssl.so
-#
-# the expected binary, see $racadm below
+# a wrapper for the Dell's idracadm7 utility
 
 # Copyright (C) 2025 ivan.tervanto /at/ aalto.fi
 # Released under the GNU General Public License
@@ -28,37 +21,61 @@ if (($#<2)); then
   echo '  Selected RACADM commands:'
   echo '    tag | getsvctag'
   echo '    sel | getsel -o'
+  echo '    tsr  # techsupreport'
   echo '    clrsel'
   echo '    swinventory'
   echo '    getversion [-f bios|idrac]'
   echo '    serveraction [powercycle|powerdown|powerup|hardreset|powerstatus]'
+  echo '    jobqueue view|delete -i <jobid>'
+  echo '    racreset  # reset idrac'
+  echo '    update -f <filename.EXE>'
   echo '    help'
   echo
   exit
 fi
 
-# BMC common credentials: $IPMI_USERNAME $IPMI_PASSWORD
+# BMC common credentials, the file should have define:
+#IPMI_USERNAME=...
+#IPMI_PASSWORD=...
 bmccredfile='/root/bin/.bmccredentials'
 if [ -r "$bmccredfile" ]; then
-  . "$bmccredfile"
+  source "$bmccredfile"
 else
   echo "No $bmccredfile found"
-  exit
+  exit 1
 fi
 
 # expand a string like node[12-14,23],gpu6 to a list of 'node12 node13 node14 gpu23 ...'
 nodelist=$(/root/bin/shosts $1)
+# parallelization, 32 processes as max
 parallel='/usr/bin/parallel -j 32 -i'
-racadm="/opt/dell/srvadmin/bin/idracadm7 --nocertwarn -u $IPMI_USERNAME -p $IPMI_PASSWORD"
+# default command
+racadm="/opt/dell/srvadmin/bin/idracadm7 --nocertwarn -u $IPMI_USERNAME -p $IPMI_PASSWORD -r "
+# a subcommand for the 'idracadm7' 
 cmd="${*:2}"
 
+# here we define several aliases like 'sel', 'tag', 'tsr' etc
+# the rest goes as is, a raw 'idracadm7' command
 case $cmd in
   sel)
-    $parallel $racadm -r {}-ipmi getsel -o -- $nodelist
+    $parallel $racadm {}-ipmi getsel -o -- $nodelist
   ;;
   tag)
-    $parallel $racadm -r {}-ipmi getsvctag -- $nodelist
+    $parallel $racadm {}-ipmi getsvctag -- $nodelist | tr -d '\r ' | grep -v '^$'
+  ;;
+  tsr)
+    # one at the time
+    for node in $nodelist; do
+      tag=$(${0##./} ${node} tag)
+      echo Launching TSR request on the ${node} ${tag} ...
+      $racadm ${node}-ipmi  techsupreport collect -t SysInfo,TTYLog
+      echo Check that the TSR report is 100% completed:
+      echo "  ${0##./} ${node} jobqueue view -i <Job ID>"
+      echo and download it:
+      echo "  ${0##./} ${node} techsupreport export -f ${node}.${tag}_$(date +'%Y-%m-%d').zip"
+      echo; echo
+    done
   ;;
   *)
-    $parallel $racadm -r {}-ipmi $cmd -- $nodelist
+    $parallel $racadm {}-ipmi $cmd -- $nodelist
 esac
