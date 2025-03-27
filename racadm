@@ -96,7 +96,7 @@ case $cmd in
       on) action='powerup' ;;
       off) action='powerdown' ;;
       cycle) action='powercycle' ;;
-      status) action='powerstatus' ;;
+      *) action='powerstatus' ;;
     esac
     $parallel $racadm {}-ipmi serveraction $action -- $nodelist | clean
   ;;
