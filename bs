@@ -9,7 +9,7 @@
 
 
 EDIT='vim +9999999'
-EMAIL='ivan.degtyarenko -at- aalto.fi'
+EMAIL='ivan.tervanto -at- aalto.fi'
 
 (($#==0)) && { echo Usage: ${0##./} new_bash_script_name; exit 1; }
 
