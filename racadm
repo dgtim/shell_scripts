@@ -33,10 +33,14 @@ if (($#<2)); then
   echo '    getsysinfo # incl MAC addresses'
   echo '    swinventory'
   echo '    getversion [-f bios|idrac]'
-  echo '    power on|off|cycle|status'
+  echo '    power reset|on|off|cycle|status'
   echo '    ... alias to: serveraction [powercycle|powerdown|powerup|hardreset|powerstatus]'
   echo '    led [on|off]'
   echo '    ... alias to: getled, setled -l 0|1'
+  echo '    boot bios|lc|iso  # one-time boot'
+  echo '    ... alias to  set iDRAC.serverboot.FirstBootDevice BIOS|F10|VCD-DVD'
+  echo '    ... # one time boot to BIOS|LifecycleController|virtual iso'
+  echo '    ... # assuming iDRAC.serverboot.BootOnce enabled'
   echo '    jobqueue view|delete -i <jobid>'
   echo '    racreset  # reset idrac'
   echo '    update -f <filename.EXE>'
@@ -93,6 +97,7 @@ case $cmd in
   ;;
   power*)
     case ${3} in
+      reset) action='hardreset' ;;
       on) action='powerup' ;;
       off) action='powerdown' ;;
       cycle) action='powercycle' ;;
@@ -108,5 +113,17 @@ case $cmd in
     esac
     $parallel $racadm {}-ipmi $action -- $nodelist | clean
   ;;
+  boot*)
+    case ${3} in
+      bios) value='BIOS' ;;
+      lc) value='F10' ;;
+      iso) value='VCD-DVD' ;;
+      *) value='Normal' ;;
+    esac
+    $parallel $racadm {}-ipmi set iDRAC.serverboot.FirstBootDevice $value -- $nodelist | clean
+    echo "  for the rebooting: ${0##./} $1 power cycle"
+    echo "  FirstBootDevice will be set back to Normal automagically"
+  ;;
+  # any other command is given to idracadm7 as is
   *) $parallel $racadm {}-ipmi $cmd -- $nodelist ;;
 esac
