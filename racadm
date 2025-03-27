@@ -35,6 +35,8 @@ if (($#<2)); then
   echo '    getversion [-f bios|idrac]'
   echo '    power on|off|cycle|status'
   echo '    ... alias to: serveraction [powercycle|powerdown|powerup|hardreset|powerstatus]'
+  echo '    led [on|off]'
+  echo '    ... alias to: getled, setled -l 0|1'
   echo '    jobqueue view|delete -i <jobid>'
   echo '    racreset  # reset idrac'
   echo '    update -f <filename.EXE>'
@@ -97,6 +99,14 @@ case $cmd in
       status) action='powerstatus' ;;
     esac
     $parallel $racadm {}-ipmi serveraction $action -- $nodelist | clean
+  ;;
+  led*)
+    case ${3} in
+      on) action='setled -l 1' ;;
+      off) action='setled -l 0' ;;
+      *) action='getled'
+    esac
+    $parallel $racadm {}-ipmi $action -- $nodelist | clean
   ;;
   *) $parallel $racadm {}-ipmi $cmd -- $nodelist ;;
 esac
