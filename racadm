@@ -67,15 +67,14 @@ racadm="/opt/dell/srvadmin/bin/idracadm7 --nocertwarn -u $IPMI_USERNAME -p $IPMI
 # a subcommand for the 'idracadm7' 
 cmd="${*:2}"
 
-# here we define several aliases like 'sel', 'tag', 'tsr' etc
+# idracadm7 produces quite a bit of garbadge, oneliner to make output cleaner
+clean() { tr -d '\r' | awk '{$1=$1};1' | grep -v '^\s*$'; }
+
+# here we redefine $cmd for the aliases like 'sel', 'tag', 'tsr' etc
 # the rest goes as is, a raw 'idracadm7' command
 case $cmd in
-  sel)
-    $parallel $racadm {}-ipmi getsel -o -- $nodelist
-  ;;
-  tag)
-    $parallel $racadm {}-ipmi getsvctag -- $nodelist | tr -d '\r ' | grep -v '^$'
-  ;;
+  sel) $parallel $racadm {}-ipmi getsel -o -- $nodelist ;;
+  tag) $parallel $racadm {}-ipmi getsvctag -- $nodelist | clean ;;
   tsr)
     # one at the time
     for node in $nodelist; do
@@ -89,6 +88,14 @@ case $cmd in
       echo; echo
     done
   ;;
-  *)
-    $parallel $racadm {}-ipmi $cmd -- $nodelist
+  power*)
+    case ${3} in
+      on) action='powerup' ;;
+      off) action='powerdown' ;;
+      cycle) action='powercycle' ;;
+      status) action='powerstatus' ;;
+    esac
+    $parallel $racadm {}-ipmi serveraction $action -- $nodelist | clean
+  ;;
+  *) $parallel $racadm {}-ipmi $cmd -- $nodelist ;;
 esac
