@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# extended 'tar'
+# Usage: tarit [dirname1 [dirname2 [dirname3 ...]]]
+# or     command | tarit
+
+# by default no directories to archive. i.e. current
+args=''
+
+# checking for STDIN, if any, assigning STDIN to $args
+[[ -p /dev/stdin ]] && args=$(</dev/stdin)
+
+# if arguments are given, appending the $args with $@
+(($#)) && args+=" $@"
+
+# no arguments, no stdin, then it is a current dir
+[[ -z "$args" ]] && args="$(pwd)"
+
+# by now we should have a directory list in $args to archive
+for d in $args; do
+  # checking that directory exists, if so, archive it
+  if [[ -d "$d" ]]; then
+    echo Archiving $d ...
+    tar caf ${d##*/}.$(date +%Y-%m-%d).tar.gz "$d"
+  else
+    echo "   $d does not exist, skipping."
+  fi
+done
