@@ -3,7 +3,14 @@
 # changes file permissions depending on the calling file name
 # setup: copy this file to the bin/ directory and make hardlinks to it as
 # ln cx cw; ln cx cr; ln cx c-w
-# see 'cx -h' for the usage help
+#
+# run as:
+# cx filename # makes filename executable
+# cw filename # makes filename writable
+# cr filename # makes filename readable
+# c-w filename # removes w-rights from the filename
+#
+# see 'cx -h' for the usage help / options
   
 # common usage function with the exit at the end
 usage() {
