@@ -14,6 +14,6 @@ See details in the comments
 * ipmi -- wrapper for the ipmitool utilities
 * racadm -- wrapper for the Dell's idracadm7 utility
 * cx -- quick wrapper for the 'chmod'
-* *_demo, tartit, gauss -- variety of the demo scripts used for the teaching purpose
+* *_demo, demos, tartit, gauss -- variety of the demo scripts used for the teaching purpose
 
 All of these materails have been used either for the Linux HPC cluster administration purpose or as demo / exsercises for the Linux Shell tutorial https://aaltoscicomp.github.io/linux-shell/
