@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# demo for the random generator in BASH
+# the other function requires 'shuf' utility to be installed
+
+# pure BASH version
+random_gen() {
+  LIMIT=${1:-100}     # function can accept LIMIT as $1
+  declare -ia r_num   # declare array of integers
+  local i=1
+  until ((i>LIMIT)); do
+    num=$RANDOM            # RANDOM returns a random number every time
+    for j in ${!r_num[@]}; do 
+      if (($num==${r_num[$j]})); then  # check that it is unique
+        continue 2
+      fi
+    done
+    ((i++))
+    r_num+=($num)    # add a new unique number to array
+  done
+  declare -p r_num   # dirty print out
+}
+time random_gen           # calling the function
+
+
+# The other version of making the same array of random numbers:
+# Just a reminder, that BASH is about getting to work 
+# all sort of utilities together
+random_gen_shuf() {
+  declare -ia r_num=($(shuf -i1-${1:-100} -n${1:-100}))
+  declare -p r_num
+}
+
+time random_gen_shuf
