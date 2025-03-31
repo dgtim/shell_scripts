@@ -13,5 +13,7 @@ See details in the comments
 * tfunctions -- bunch of shell functions used for administrative purpose on the cluster
 * ipmi -- wrapper for the ipmitool utilities
 * racadm -- wrapper for the Dell's idracadm7 utility
+* cx -- quick wrapper for the 'chmod'
+* *_demo -- variety of the demo scripts used for the teaching purpose
 
 All of these materails have been used either for the Linux HPC cluster administration purpose or as demo / exsercises for the Linux Shell tutorial https://aaltoscicomp.github.io/linux-shell/
