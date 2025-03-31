@@ -1,9 +1,5 @@
 # not a BASH script but a collection of demos used for the scritping course
 
-
-
-
-
 ### 'read' command demo
 # request a new directory name till correct one is given (interrupt with Ctrl-C)
 regexp='^[a-zA-Z0-9/_-]+$'
