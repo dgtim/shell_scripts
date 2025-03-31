@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# init actions before the course session
+# run as 'source doinit' in the demo terminal
+# then see instructions below
+
+if [[ -z "$PS1" ]] ; then
+    echo "usage: source $(basename $0)"
+    exit 1
+fi
+
+export DEMOSPACE=~/demospace
+[[ -d $DEMOSPACE ]] || mkdir $DEMOSPACE
+chmod a+rx $DEMOSPACE
+
+export WEBSPACE='degtyai1@taltta.aalto.fi:/m/webhome/webhome/54/degtyai1/public_html/shell'
+
+
+# set default umask to u=rwx,g=rwx,o=rx
+umask 0002
+
+# redefine .bash_history file
+export HISTFILE=${DEMOSPACE}/bash_history.$(date +%Y-%m-%d)
+export PROMPT_COMMAND='history -a'
+touch $HISTFILE && chmod a+r,g+w $HISTFILE
+
+echo "Run in the separate window: tail -n 0 -F $HISTFILE"
+echo "Open in the browser https://users.aalto.fi/~degtyai1/shell/"
+
+# rsync every time something happens
+while inotifywait -q -r -e modify,create,delete,move $DEMOSPACE; do
+  rsync --delete -au --exclude "$(basename $0)" $DEMOSPACE/ $WEBSPACE
+done &>/dev/null &
+
+# just to kill the bg job on exit (SIGHUP actually)
+shopt -s huponexit
