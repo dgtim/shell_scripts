@@ -1,0 +1,85 @@
+# not a BASH script but a collection of demos used for the scritping course
+
+
+
+
+
+### 'read' command demo
+# request a new directory name till correct one is given (interrupt with Ctrl-C)
+regexp='^[a-zA-Z0-9/_-]+$'
+until [[ "$newdir" =~ $regexp ]]; do
+  read -p 'New directory: ' newdir
+done
+
+  
+### while statement demo [Note: expects an output file]  
+[[ -d "$newdir" ]] || mkdir "$newdir"
+
+file=$1
+
+while IFS=\; read -r f1 f2 f3 f4 f5; do
+  printf 'Field1: %s, Field2: %s, Field5: %s\n' "$f1" "$f2" "$f5"
+done < "$file"
+
+  
+### STDIN handling in BASH demo
+if [[ -p /dev/stdin ]]; then
+  # passing STDIN to a pipeline  (/dev/stdin can be omitted)
+  cat /dev/stdin | cut -d':' -f 1,5 | sort
+fi
+
+  
+### 'case' statement demo
+read -p "Do you want to create a directory (y/n)? " yesno   # expects user input
+case $yesno in
+  y|yes)
+    dir='dirname'
+    echo Creating a new directory $dir
+    mkdir $dir
+    cd $dir
+    ;;
+  n|no)
+    echo Proceeding in the current dir $(pwd)
+    ;;
+  *)
+    echo Invalid response
+    exit 1
+    ;;
+esac
+
+
+### 'for ...' looping demo
+for f in $(find . -type f -name *.JPG) ; do
+  for i in {1..10}; do
+    if [[ $f =~ '^P*$' ]]; then continue 2; fi
+    mv -i "$f" "${f/.*/.jpg}";
+  done 
+done
+
+# simple alternative:
+find . -type f -name *.JPG -exec mv ... \;
+
+
+
+### a few 'if ...' demos
+# ping google to check connectivity
+if ping -c 1 google.com &> /dev/null; then
+  echo Online
+elif ! ping -c 1 127.0.0.1 &> /dev/null; then
+  echo Local interface is down
+else
+  echo No external connection
+fi
+
+# compare strings given as args
+if [[ -z $1 ]]; then
+  echo no arguments
+  exit 1
+fi
+
+if [[ "$1" == "$2" ]]
+then
+  echo The strings are the same
+else
+  echo The strings are different
+fi
