@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# changes file permissions depending on the calling file name
+# setup: copy this file to the bin/ directory and make hardlinks to it as
+# ln cx cw; ln cx cr; ln cx c-w
+# see 'cx -h' for the usage help
+  
+# common usage function with the exit at the end
+usage() {
+  echo "Usage: $sname [options] file [file [file...]]"
+  echo '       -a, gives access to all, like a+x, by default +x'
+  echo '       -d <directory/path/bin>, path to the bin directory'
+  echo "          can be used in 'cx' to copy a new script there"
+  echo '       -a, gives access to all, like a+x, by default +x'
+  echo '       -d <directory/path/bin>, path to the bin directory'
+  echo "          can be used in 'cx' to copy a new script there"
+  echo '       -v, verbose mode for chmod'
+  echo '       -h, this help message'
+  exit 1
+}
+
+# whole trick is in this part: getopt validates the input parameters,
+# structures them by dividing options and arguments with --,
+# and returns them to a variable
+# then they are reassigned back to $@ with 'set --'
+opts=$(getopt "avhd:" "$@") || usage
+set -- $opts
+
+# defining variables' default values
+ALL=''
+CMD='/usr/bin/chmod'
+sname=${0##*/}  # the name this script was called by
+
+# by now we have a well structured $@ which we can trust.
+# to go through options one by one we start an endless 'while' loop
+# with the nested 'case'. 'shift' makes another trick, every time
+# it is invoked it is equal to 'unset $1', thus $@ arguments are
+# "shifted down", $2 becomes $1, $3 becomes $2, etc
+# 'getopt' adds -- to $@ which separates valid options and the rest
+# that did not qualify, when it comes to '--' we 'break' the loop
+while true; do
+  case ${1} in
+    -h) usage ;; # output help message and exit
+    -a) ALL=a ;; # if -a is given we set ALL
+    -v) CMD+=' -v' ;; # if verbose mode required
+    -d) shift # shift to take next item as a directory path for -d
+        BINDIR="$1"
+        if [[ -z "$BINDIR" || ! -d "$BINDIR" ]]; then
+          echo "ERROR: the directory does not exist"
+          usage
+        fi
+     ;;
+    --) shift; break ;;   # remove --
+  esac
+  shift
+done
+
+
+# script body
+
+case "$sname" in
+  cx*) $CMD ${ALL}+rx "$@" && \
+       [[ -n "$BINDIR" ]] && cp -p $@ $BINDIR ;;
+  cw*) $CMD ${ALL}+w "$@" ;;
+  cr*) $CMD ${ALL}+r "$@" ;;
+  c-w*) $CMD ${ALL}-w "$@" ;;
+  *) echo "ERROR: no idea what $sname is supposed to do"; exit 1 ;;
+esac
