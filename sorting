@@ -27,7 +27,7 @@ debug() {
 usage() {
   echo "Usage: ${0##*/} integer integer ..."
   echo "Usage: echo integer integer ... | {0##*/}"
-  echo "There should be more one one integer in the list to sort"
+  echo "There should be one more integer in the list to sort"
   echo; echo "Verbose mode: DEBUG=yes ${0##*/} ..."
   exit 1
 }
