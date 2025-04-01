@@ -1,0 +1,115 @@
+#!/bin/bash
+
+# benchmarking two sorting algorithms: Bubble sort and Shellsort
+# input can be given from command line or as an STDIN
+
+# initially a course speacial assignment, that has been formulated as:
+#
+#Implement Bubble and David Shell sort algorithms using BASH
+#internal functionality only. Make a performance comparison
+#for sorting 1000 random numbers with 'time' utility. 
+#(Shellsort https://en.wikipedia.org/wiki/Shellsort)
+#
+#For generating random numbers one can use function we have
+#developed during the tutorial. Alternatively, script can
+#accept random numbers as standard input, generated like
+#'shuf -i1-1000' or in a similar way.
+
+
+
+# verbose echo, if environment variable DEBUG has been set to yes
+debug() {
+  [[ "$DEBUG" == 'yes' ]] && echo "$@"
+}
+
+
+# function to exit and give an usage error
+usage() {
+  echo "Usage: ${0##*/} integer integer ..."
+  echo "Usage: echo integer integer ... | {0##*/}"
+  echo "There should be more one one integer in the list to sort"
+  echo; echo "Verbose mode: DEBUG=yes ${0##*/} ..."
+  exit 1
+}
+
+
+# declaring array of integers
+declare -ai numbers
+
+# we read given input into array
+if [[ -p /dev/stdin ]]; then
+  numbers=($(</dev/stdin))   # read STDIN into array
+elif (($#>1)); then
+  numbers=($@)               # read positional parameters into array
+else
+  usage                      # if none is given, run usage()
+fi
+
+# all the 'debug' lines are printed only if DEBUG=yes
+debug -n 'Original set of numbers before sorting:'
+debug ${numbers[@]}
+
+# function implements Bubble sorting algorithm
+bubblesort() {
+  local arr=(${!1})  # array of numbers passed as an argument, defined as local
+  n=${#arr[@]}       # array length
+
+  # we go through all the elements and 'moving' the greater one 
+  # to the right while collecting smaller ones on the left
+  for (( i=0; i<n ; i++ )); do
+    for (( j=i; j<n; j++ )); do
+      if (( arr[$i] > arr[$j] )); then
+        # swapping if greater 
+        tmp=${arr[$i]} arr[$i]=${arr[$j]} arr[$j]=$tmp
+      fi
+    done
+  done
+
+  debug -n 'Bubblesort resulting order: '
+  debug ${arr[@]}
+}
+
+
+# https://en.wikipedia.org/wiki/Shellsort
+# for the gaps sequence we use the original one published by Shell in 1959
+shellsort() {
+  local arr=(${!1})  # array of numbers passed as an argument
+  n=${#arr[@]}       # array length
+
+  # prepare the gaps array (n/2 n/4 ... 1)
+  for ((i=n/2; i!=0; i/=2)); do
+    gaps+=($i)
+  done
+
+  # Start with the largest gap and work down to a gap of 1
+  for gap in ${gaps[@]}; do
+    # Do a gapped insertion sort for this gap size.
+    # The first gap elements arr[0..gap-1] are already in gapped order
+    # keep adding one more element until the entire array is gap sorted
+    for ((i=gap; i<n; i++)); do
+      # add arr[i] to the elements that have been gap sorted
+      # save arr[i] in temp and make a hole at position i
+      temp=${arr[i]}
+      # shift earlier gap-sorted elements up until the correct location for arr[i] is found
+      for ((j=i; j>=gap && arr[j-gap]>temp; j-=gap)); do
+        arr[$j]=${arr[$((j-gap))]}
+      done
+      # put temp (the original arr[i]) in its correct location
+      arr[$j]=$temp
+    done
+  done
+  
+  debug -n 'Shellsort resulting order: '
+  debug ${arr[@]}
+
+}
+
+
+# actual body of the script, we invoke both functions serially 
+# with 'time' that reports the timing
+ 
+echo Bubble sort:
+time bubblesort numbers[@]
+
+echo; echo Shellsort:
+time shellsort numbers[@]
