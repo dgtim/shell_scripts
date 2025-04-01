@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # behaves depending on the script original name
-# if 'cx' then adds x-bit to a file
+# if 'mkexe' then adds x-bit to a file
 # if 'mkbin' picks up a file, copies it to ~/bin and adds
 # x-bit, also makes sure ~/bin exists and ti is in the PATH
 
 # The first touch:
 # $ bash shell_scripts/mkbin shell_scripts/mkbin
-# $ cd ~/bin && ln mkbin cx
+# $ cd ~/bin && ln mkbin mkexe
 
 # Copyright (C) 2016 ivan.tervanto /at/ aalto.fi
 
@@ -24,7 +24,7 @@ fi
 file=$1
 dbin=$HOME/bin
 
-# we expect either mkbin or cx as a script name
+# we expect either mkbin or mkexe as a script name
 case "$0" in
  *mkbin)
    # create ~/bin if does not exist yet
@@ -35,8 +35,8 @@ case "$0" in
    # (can be replaced with ln if on the same filesystem)
    cp "$file" $dbin && file="$dbin/${file##*/}"
    ;&
- *cx)
-   # +x bit is set in both cases mkbin/cx
+ *mkexe)
+   # +x bit is set in both cases mkbin/mkexe
    chmod +x $file
    ;;
   *)
