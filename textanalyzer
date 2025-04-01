@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# text analyzer, accepts any random text as STDIN or a filename
+
+usage() {
+  echo "
+  Usage: ./${0##*/} -cws -t n -f filename
+  Usage: cat file.txt | ./${0##*/} -cws -t n
+    -c      reports total number of characters in the document
+    -w      reports total number of words in the document
+    -t n    top 'n' most common words, where n is any positive integer
+    -s      sorted list of how often appear words of different length
+  "
+  exit 1
+}
+
+opts=$(getopt "cwst:f:" "$@") || usage
+set -- $opts
+while :; do
+  case ${1} in
+    -c) CHARS=1 ;;
+    -w) WORDS=1 ;;
+    -s) WORDSTAT=1 ;;
+    -t) shift; N=$1 ;;
+    -f) shift; FILE="$1" ;;
+    --) shift; break ;;  # remove trailing --
+  esac
+  shift
+done
+
+# if FILE is not given, check for STDIN
+if [[ -z "$FILE" ]]; then 
+  if [[ -p /dev/stdin ]]; then
+    text=$(</dev/stdin)
+  else
+    echo "Neither file nor STDIN" 1>&2
+    usage
+  fi
+else
+  if [[ -r "$FILE" ]]; then
+    text=$(<$FILE)
+  else
+    echo "Can not read file: $FILE" 1>&2
+    usage
+  fi
+fi
+
+
+if [[ -z "$text" ]]; then
+  echo 'Nothing to analyze' 1>&2
+  usage
+fi
+
+
+# reports number of chars either if -c is set or if no other option is given
+if [[ -n $CHARS || ( -z $WORDS && -z $N && -z $WORDSTAT ) ]]; then
+  chars=$(echo $text | wc -m)
+  printf '%-30s %-10s\n' 'Total number of characters:' $chars
+fi
+
+# getting a list of words out of the text
+# by words we consider any ^[a-z]$ sequence. Everything else like
+# URLs, paths and other sentences that may include special chars
+# we drop out. Though we do care about cases like 'instance.' and 
+# alike, to make sure they are counted but without punctuation
+if [[ -n $WORDS || -n $N || -n $WORDSTAT ]]; then
+  text=$(echo $text | tr ' ' '\n' | tr '[:upper:]' '[:lower:]' | grep -E ^[a-z]+[[:punct:]]*$ | tr -d [[:punct:]] | sort)
+  # tr ' ' '\n'                     -- replaces all spaces with new lines, thus putting a word per line
+  # tr '[:upper:]' '[:lower:]'      -- everything to lower case
+  # grep -E ^[a-z]\+[[:punct:]]\*$  -- grep words or words with punctuation at the end, like 'word.'
+  # tr -d [[:punct:]]               -- removes punctuation
+fi
+
+# counting words
+if [[ -n $WORDS ]]; then
+  words=$(echo $text | wc -w)
+  printf '%-30s %-10s\n' 'Total number of words:' $words
+fi
+
+# topN
+if [[ -n $N ]]; then
+  topN=$(echo $text | uniq -c | sort -nr | head -$N)
+  # sort -nr   -- sorts numerically, output results recursively
+  # uniq -c    -- counts unique entries
+  # head -N    -- output first N lines
+  printf '%-30s\n' "Top$N most used words:"
+  echo $topN
+fi
+
+# counting statistics of different words lengths
+if [[ -n $WORDSTAT ]]; then
+  lengths=$(echo $text | awk '{print length}' | sort -n | uniq -c)
+  # awk '{print length}'        -- prints word length
+  printf '%-30s\n' 'Length stats:'
+  printf '%-8s %-30s\n' '# words' '# chars in the word'
+  echo $lengths
+fi
