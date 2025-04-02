@@ -1,8 +1,16 @@
 #!/bin/bash
 
-# extended 'tar'
+# a 'tar' wrapper that picks up directory name from the cli / stdin
+# and archive them to the current dir in a way dirname.date.tar.gz
+# if no arguments are given, archives the current dir
+#
 # Usage: tarit [dirname1 [dirname2 [dirname3 ...]]]
 # or     command | tarit
+
+# Copyright (C) 2018 ivan.tervanto /at/ aalto.fi
+
+# Released under the GNU General Public License
+
 
 # by default no directories to archive. i.e. current
 args=''
