@@ -6,11 +6,6 @@
 # source it in your .bashrc
 # . tfunctions
 
-# set credentials
-IPMI_USERNAME=XXX
-IPMI_PASSWOR=XXX
-export IPMI_USERNAME IPMI_PASSWORD
-
 resume() {
   if [ $# -eq 0 ]; then
     echo "usage:  resume cn[xx,xx-xx],tbxxx,gpu[xxx-xxx]"
@@ -53,28 +48,6 @@ pdsh_healthcheck() {
   fi
 }
 
-ipmi() {
-  if [ $# -lt 2 ]; then
-    echo "usage:  ipmi wsm[xx-xx,x],gpuxx command args"
-    echo "useful command: 'power {on,off,reset}', 'console', 'led'"
-    return 1
-  else
-    case $2 in
-      console)
-        echo 'Running ipmiconsole; exit with &.'
-        ipmiconsole -u $IPMI_USERNAME -p $IPMI_PASSWORD -h ${1}-ipmi
-        return ;;
-      led)
-        ipmi-chassis -D LAN_2_0 -u $IPMI_USERNAME -p $IPMI_PASSWORD -h $1-ipmi --chassis-identify=FORCE
-        return ;;
-    esac
-    nodelist=$(/bin/hostlist -e -s" " $1)
-    cmd="${*:2}"
-    # 32 jobs max at once
-    parallel -j 32 -i ipmitool -I lanplus -U $IPMI_USERNAME -P $IPMI_PASSWORD -H {}-ipmi $cmd -- $nodelist
-  fi
-}
-
 # Create a SLURM reservation starting immediately.
 reserve() {
   if [ $# -lt 2 ]; then
@@ -98,6 +71,7 @@ reserve() {
 reservations(){
   scontrol show reservation
 }
+
 
 # Delete a SLURM reservation
 reservation_rm() {
@@ -132,36 +106,4 @@ nst() {
 #      echo "  nhc $NHC"
 #    fi
   done
-}
-
-alias rash='racadm.sh'
-
-tsr() {
-  # requests TSR from a given list of Dell nodes
-  if [[ $# != 1 ]]; then
-    echo "usage:  $FUNCNAME pe[xx-xx,x],gpuxx"
-    return 1
-  else
-    nodelist=$(/bin/hostlist -e -s" " $1)
-    for n in $nodelist; do
-      echo Asking for the service tag on $n-ipmi ...
-      # IPMI_USERNAME=... IPMI_PASSWORD=... defined earlier
-      cmd="/usr/local/sbin/racadm.sh ${n}-ipmi "
-      if tag=$($cmd getsvctag 2>/dev/null); then
-        tag=$(echo $tag|tr -d '\r \n')
-        echo ' ' $tag
-      else
-        echo "Error: Check the name $n-ipmi. It is either wrong or offline."
-        continue
-      fi
-      echo Launching TSR request ...
-      $cmd techsupreport collect -t SysInfo,TTYLog
-      echo
-      echo The TSR report can be checked with:
-      echo "  racadm.sh $n-ipmi jobqueue view"
-      echo when it is ready to download, run:
-      echo "  racadm.sh $n-ipmi techsupreport export -f ${tag}_$(date +'%Y-%m-%d').zip"
-      echo
-    done
-  fi
 }
