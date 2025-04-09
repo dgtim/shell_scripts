@@ -13,7 +13,7 @@
 # Released under the GNU General Public License
 
 # catching signals to make sure the clean exit
-trap 'killall $(jobs -p) 2>/dev/null' 1 2 3 6 
+trap 'killall $(jobs -p) 2>/dev/null; exit 1' 1 2 3 6
 
 # help function
 usage() {
@@ -52,7 +52,7 @@ done
 if (($#==1)); then
   NODES=$1
 else
-  usage "Incorrect node list"
+  usage "Incorrect node list $@"
 fi
 
 # define default vars
@@ -62,13 +62,14 @@ BOOTSTRAP_FILE=${BOOTSTRAP_URL##*/}  # extract the file name from the URL
 : ${TIMEOUT:=10}  # timeout for the sleep, see rundsu()
 DSUTEMP='/root/.dsu'  # the action dir
 RD='/root'  # a directory on the remote node
+RUNDSU='rundsu' # temporary script for the remote execution
 
-# we do all the local preparations / collect logs in this folder
+# all the local preparations / logs in this folder
 [[ -d $DSUTEMP ]] || mkdir $DSUTEMP
 cd $DSUTEMP
 
 $VERBOSE echo NP: $NP
-$VERBOSE echo TIMEOUT:$TIMEOUT
+$VERBOSE echo TIMEOUT: $TIMEOUT
 $VERBOSE echo bootstrap file: $DSUTEMP/$BOOTSTRAP_FILE
 
 # get the dell's bootstrap file
@@ -80,11 +81,9 @@ fi
 # fix that GPG thing; make it "non-interactive"
 sed -i 's/IMPORT_GPG_CONFIRMATION="na"/IMPORT_GPG_CONFIRMATION="yes"/' $BOOTSTRAP_FILE
 
-
-# a string like node[2-4,7],gpu6 to a list of 'node2 node3 node4 node7 gpu6 ...'
+# a string like node[2-4,7],gpu6 to a list 'node2 node3 node4 node7 gpu6 ...'
 NODELIST=$(shosts $NODES)
 $VERBOSE echo NODELIST: $NODELIST
-RUNDSU='rundsu' # temporary script for the remote execution
 pdcp_cmd="pdcp -f $NP -b -w $NODES"
 $VERBOSE echo pdcp command: $pdcp_cmd ...
 dsu_cmd='dsu -n --import-public-key' # add --reboot, if needed
@@ -94,11 +93,11 @@ $VERBOSE echo DSU command: $dsu_cmd
 ## the action starts here
 
 # copy the bootstrap file over the nodes
-echo "...Copying $BOOTSTRAP_FILE to the $NODELIST"
+echo "...Copying $BOOTSTRAP_FILE to:  $NODELIST"
 $pdcp_cmd $BOOTSTRAP_FILE $RD/$BOOTSTRAP_FILE
 
 # making a temp executable and run it on the $NODES
-echo "...Creating and copying 'rundsu' to the $NODELIST"
+echo "...Creating and copying 'rundsu' to:  $NODELIST"
 cat <<EOF > $RUNDSU
 # $(date -R)
 echo '#### RUNNING' $RD/$BOOTSTRAP_FILE 
@@ -112,13 +111,13 @@ $pdcp_cmd $RUNDSU $RD/$RUNDSU
 
 
 # the function that does the actual run
-rundsu() {
+rundsu() { 
   local NODE=$1 SSHST HELPURL
 
   echo $NODE: Started at $(date -R)
 
   ssh -o ConnectTimeout=12 $NODE "bash $RD/$RUNDSU"  # actual run
-  SSHST=$?  # status of the SSH command
+  SSHST=$?  # status of the SSH command (== the latest executed command)
   $VERBOSE echo SSH exit code for $NODE: $SSHST
 
   # exit codes for the DSU
@@ -126,7 +125,7 @@ rundsu() {
 
   case $SSHST in
     8)
-      # '8' stands for the 'reboot is required'
+      # '8' stands for the 'Please restart the system for ...'
       echo $NODE: DSU run is over, draining for the reboot
       scontrol update nodename=$NODE state=drain reason=reboot
     ;;
@@ -148,9 +147,9 @@ for n in $NODELIST; do
   # checking how many jobs we have currently running
   cnp=$(jobs | wc -l)
 
-  # limit a number of the jobs to $NP
+  # if $cnp is greater or equal to $NP: sleep
   while (( $cnp >= $NP )); do
-    sleep $TIMEOUT # timeout between checking the jobs #
+    sleep $TIMEOUT # timeout between checking the jobs number
     # set counter to a number of jobs running currently
     cnp=$(jobs | wc -l)
   done # while
