@@ -1,0 +1,132 @@
+#!/bin/bash
+
+# initiate the firmware updates from the admin node
+# limits the number of processes to NP
+# Dependencies: cURL, shosts, pdcp
+
+# Note: for the expanding a string like node[12-14,23],gpu6 to
+# a list of 'node12 node13 node14 node23 gpu6 ...' we use 'shosts'
+# from this the same git repo
+
+
+# Copyright (C) 2025 ivan.tervanto /at/ aalto.fi
+# Released under the GNU General Public License
+
+
+# help function
+usage() {
+  (($#)) && echo "Error: $@"
+  echo "usage:  ${0##./} nodeA[xx-xx,x],nodeBxx"
+  exit 1
+}
+
+# expect a node list in a SLURM style
+if (($#!=1)); then usage 'Missing comma separated node list'; fi
+
+# define default vars
+BOOTSTRAP_URL='https://linux.dell.com/repo/hardware/dsu/bootstrap.cgi'
+BOOTSTRAP_FILE=${BOOTSTRAP_URL##*/}  # extract the file name from the URL
+NP=4  # default number of the simultaneous remote processes/copies
+DSUTEMP='/root/.dsu'  # action dir
+
+# we do all the local preparations in this folder
+[[ -d $DSUTEMP ]] || mkdir $DSUTEMP
+cd $DSUTEMP
+
+# get the dell's bootstrap file
+echo "Downloading $BOOTSTRAP_FILE file" 
+if ! curl -f -s -O $BOOTSTRAP_URL; then
+  usage "Can't download  $BOOTSTRAP_URL"
+fi
+
+# fix that GPG thing; make it "non-interactive"
+sed -i 's/IMPORT_GPG_CONFIRMATION="na"/IMPORT_GPG_CONFIRMATION="yes"/' $BOOTSTRAP_FILE
+
+
+# expand a string like node[12-14,23],gpu6 to a list of 'node12 node13 node14 gpu23 ...'
+NODES=$1
+NODELIST=$(shosts $NODES)
+pdcp_cmd="pdcp -f $NP -b -w $NODES"
+pdsh_cmd="pdsh -f $NP -b -w $NODES"
+RUNDSU='rundsu' # temporary script for the remote execution
+dsu_cmd='dsu -n --import-public-key' # add --reboot, if needed
+
+# the action starts here
+
+# copy the bootstrap file over the nodes
+echo "Copying $BOOTSTRAP_FILE to the $NODELIST"
+$pdcp_cmd $BOOTSTRAP_FILE /root/$BOOTSTRAP_FILE
+
+# making a temp executable and run it on the $NODES
+echo "Creating and copying 'rundsu' to the $NODELIST"
+cat <<EOF > $RUNDSU
+# $(date -R)
+echo '#### RUNNING' /root/$BOOTSTRAP_FILE 
+bash /root/$BOOTSTRAP_FILE 
+echo '#### UPDATING dell-system-update'
+yum -y install dell-system-update
+echo '#### RUNNING' $dsu_cmd
+$dsu_cmd
+EOF
+
+$pdcp_cmd $RUNDSU /root/$RUNDSU
+
+# the function that does the actual run
+rundsu() { 
+  local NODE=$1 SSHST HELPURL
+
+  echo $NODE: Started at $(date -R)
+
+  ssh -o ConnectTimeout=12 $NODE "bash /root/$RUNDSU"  # actual run
+  SSHST=$?  # status of the SSH command
+
+  # exit codes for the DSU
+  HELPURL='https://www.dell.com/support/manuals/en-us/system-update/dsu_ug_1.8_revamp/dsu-return-codes?guid=guid-a413b447-0dd2-45fb-a60c-7a472e353e30'
+
+  case $SSHST in
+    8)
+      # '8' means reboot is required
+      echo $NODE: $SSHST exit code from SSH/DSU run
+      echo $NODE: DSU run is over, draining for the reboot
+      scontrol update nodename=$NODE state=drain reason=reboot
+    ;;
+    0)
+      echo $NODE: $SSHST exit code from SSH/DSU run
+      echo $NODE: DSU run is over, no reboot is required
+      echo $n: Resume the node if needed
+      #scontrol update nodename=$NODE state=resume
+    ;;
+    *)
+      echo $NODE: $SSHST exit code from SSH/DSU run
+      echo $NODE: skipping draining 
+      echo see $HELPURL
+  esac
+  echo $NODE: Finished at $(date -R)
+}
+
+# going through the NODELIST
+for n in $NODELIST; do
+
+  # checking how many jobs we have still running
+  cnp=$(jobs | wc -l)
+
+  # we limit number of jobs to NP
+  while (( $cnp >= $NP )); do
+    sleep 10 # set the timeout to check the jobs
+    # set counter to a number of jobs running currently
+    cnp=$(jobs | wc -l)
+  done # while
+
+  # proceed if/when the number of jobs is less than NP
+  echo $n: 'DSU run started:' $(date +"%H:%M %d-%m-%Y")
+  LOG="$DSUTEMP/$n.$(date +"%d-%m-%Y").log"
+  echo $n: 'Check log file for the status: ' $LOG
+  # collect log info to a dedicated log per node; send job to a background
+  { rundsu $n > $LOG;
+    echo $n: 'DSU run finished:' $(date +"%H:%M %d-%m-%Y"); } &
+
+done # for
+
+echo wating till all jobs are done
+#jobs
+wait
