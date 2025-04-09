@@ -20,7 +20,7 @@ usage() {
   (($#)) && echo -e "\nError: $@"
   echo
   echo "Usage: ${0##*/} [options] nodelist"
-  echo '        nodelist is a commai-separated list with a prefixNN naming convention'
+  echo '        nodelist is a comma-separated list with a prefixNN naming convention'
   echo '          in the general form: prefix[n-m,l-k,...]i; example: node[2-4,7],gpu6'
   echo '       -n #, number of processes to run concurrently (default 4)'
   echo '       -t #, timeout in seconds between running jobs checks (default 10s)'
