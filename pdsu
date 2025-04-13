@@ -196,7 +196,7 @@ for n in $NODELIST; do
 
   # if $cnp is greater or equal to $NP: sleep
   # if $crn is greater or equal to $RN: sleep
-  while (( $cnp >= $NP || ($crn+$cnp >= $RN) )); do
+  while (( $cnp >= $NP || $crn+$cnp >= $RN )); do
     sleep $TIMEOUT # timeout between checking the jobs number
     update_cnp
     update_crn
