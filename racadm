@@ -42,13 +42,17 @@ if (($#<2)); then
   echo '    ... # one time boot to BIOS|LifecycleController|virtual iso'
   echo '    ... # assuming iDRAC.serverboot.BootOnce enabled'
   echo '    jobqueue view|delete -i <jobid>'
+  echo '    jobqueue create Bios.Setup.1-1 -r forced # create a job'
   echo '    racreset  # reset idrac'
   echo '    update -f <filename.EXE>'
   echo '    get -f file.xml -t xml # export config to a file.xml'
   echo '    get BIOS.ProcSettings # CPU settings at BIOS'
   echo '    get BIOS.SysProfileSettings # see SysProfile='
+  echo '    set BIOS.SysProfileSettings PerfOptimized'
   echo '    get BIOS.BiosBootSettings # boot settings'
   echo '    get System.Power.Realtime.Power'
+  echo '    get iDRAC.NIC.Selection # check if idrac NIC is in a dedicated mode'
+  echo '    get BIOS.IntegratedDevices.EmbNic1 # check if idrac NIC is not shared'
   echo '    help # raw racadm commands list'
   echo
   exit
