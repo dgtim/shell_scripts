@@ -1,3 +1,4 @@
+#!/bin/bash
 
 # Initiate the Dell firmware updates from the admin node
 # limits a number of processes to NP and number of the nodes
