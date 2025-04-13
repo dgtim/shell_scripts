@@ -15,6 +15,7 @@ See details in the comments
 * racadm -- wrapper for the Dell's idracadm7 utility
 * cx -- quick wrapper for the 'chmod'
 * tarit -- tar wrapper, again, for the BASH scritpting teaching purpose mainly
+* pdsu -- wrapper for Dell's DSU, runs in parallel on the fixed number of nodes, drains and reboots SLURM nodes 
 
 All of these materails have been used either for the Linux HPC cluster administration purpose or as demo / exsercises for the Linux Shell Basic and Scripting tutorials https://aaltoscicomp.github.io/linux-shell/
 
