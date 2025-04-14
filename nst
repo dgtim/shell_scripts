@@ -43,24 +43,24 @@ for node in $NODELIST; do
   REASON="$(sinfo -h -n $node -O reason | awk '$1=$1')"
   if ! [[ "$REASON" == 'none' ]]; then
     echo '..drained: YES'
-    echo '..draining state: ' $(sinfo -h -n $node -O StateComplete:50)
-    echo '..draining reason: ' $REASON
-    LASTBUSYTIME=$(date -d "$(scontrol show node $node | sed -n 's/.*LastBusyTime=\([^ ]*\).*/\1/p')" +%s)
-    TIMESINCE="$(( $(date +%s) - $LASTBUSYTIME ))" 
-    echo '..last time the node had jobs: ' $(when $TIMESINCE)
+    echo '..draining state:' $(sinfo -h -n $node -O StateComplete:50)
+    echo '..draining reason:' $REASON
   else 
     echo '..drained: NOPE'
   fi
 
   NUMJOBS="$(squeue -w $node -h 2>/dev/null | wc -l)"
   if (( $NUMJOBS > 0 )); then
-    echo '..number of jobs: ' $NUMJOBS
+    echo '..number of running jobs:' $NUMJOBS
     # timing in seconds
     LASTJOBEND="$(date -d $(squeue -h -w $node -O endtime | sort -V | tail -1) +%s)"
     TIMELEFT="$(( $LASTJOBEND - $(date +%s) ))" 
-    echo '..last job end: ' $(when $TIMELEFT)
+    echo '..the job(s) will end: ' $(when $TIMELEFT)
   else 
     echo '..number of running jobs: none'
+    LASTBUSYTIME=$(date -d "$(scontrol show node $node | sed -n 's/.*LastBusyTime=\([^ ]*\).*/\1/p')" +%s)
+    TIMESINCE="$(( $(date +%s) - $LASTBUSYTIME ))" 
+    echo '..last time the node had jobs:' $(when $TIMESINCE)
   fi
 
 done
