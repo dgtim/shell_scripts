@@ -41,5 +41,5 @@ while [[ $string =~ $regex ]]; do
 done
 
 # print out the list
-printf "%s\n" "${hostlist[@]}" | sort -u | tr '\n' ' '
+printf "%s\n" "${hostlist[@]}" | sort -u -V | tr '\n' ' '
 echo
