@@ -26,21 +26,26 @@ when() {
 ssh_cmd='ssh -o ConnectTimeout=4 -q'
 
 for node in $NODELIST; do
-  echo Status of $node
+  echo "### Status of $node"
 
   # check connectivity first
-  if ping -q -n -c 1 -W 2 $node &>/dev/null; then
-    echo '..ping: OK'
-    if $ssh_cmd $node exit &> /dev/null; then
-      echo '..ssh: OK'
-      echo '..uptime:' $($ssh_cmd $node uptime -p)
-    else echo '..ssh: NOPE'
-    fi
-  else 
-    # if no ping, let us see if the power is up/down
-    echo '..ping: NOPE'
-    echo '..power status: ' $(ipmi $node power status) 
-  fi
+  ping -q -n -c 1 -W 2 $node &>/dev/null
+  PINGST=$?  # status of the ping command
+
+  case $PINGST in
+    0) echo '..ping: OK'
+       if $ssh_cmd $node exit &> /dev/null; then
+         echo '..ssh: OK'
+         echo '..uptime:' $($ssh_cmd $node uptime -p)
+       else echo '..ssh: NOPE'
+       fi ;;
+    1) # if no response, let us see if the power is up/down
+       echo '..ping: NOPE'
+       echo '..power status: ' $(ipmi $node power status) ;;
+    *) # ping returns something else in case of issue
+       echo '..ping: FAILED, check the name is correct'
+       continue # jump to the next host
+  esac
 
   # SLURM part
   REASON="$(sinfo -h -n $node -O reason | awk '$1=$1')"
@@ -68,6 +73,5 @@ for node in $NODELIST; do
 
   echo '..last 24h jobs:'
   sacct -X -n -N $node -Pno state,user -S $(date -d "-1day" '+%Y-%m-%dT%H:%M') -E Now | sort | uniq -cd
-
 
 done
