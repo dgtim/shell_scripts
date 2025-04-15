@@ -22,7 +22,7 @@ trap 'killall $(jobs -p) 2>/dev/null; exit 1' 1 2 3 6
 # for a sake of debuging, works with the '-v'
 verbose() {
   if [[ $VERBOSE == 'yes' ]]; then
-    (($#)) && echo "VERBOSE: $@"
+    (($#)) && echo "....VERBOSE: $@"
   fi
 }
 
@@ -32,10 +32,12 @@ usage() {
   echo
   echo "Usage: ${0##*/} [options] nodelist"
   echo '        nodelist is a comma-separated list with a prefixNN naming convention'
-  echo '          in the general form: prefix[n-m,l-k,...]i; example: node[2-4,7],gpu6'
-  echo '       -n #, number of processes to run concurrently (default 4)'
-  echo '       -s #, maximum number of nodes in the reboot/rebooting state (default 8)'
-  echo '       -t #, timeout in seconds between running jobs checks (default 60s)'
+  echo '          in the general form: prefix[n-m,l-k,...]; example: node[2-4,7],gpu6'
+  echo '       -n #, number of nodes to run DSU processes concurrently (default 4)'
+  echo '       -s #, total number of nodes from the nodelist that can be drained or'
+  echo '          in the process of applying DSU at once (default 8)'
+  echo '       -t ##, timeout between running jobs checks (default 1m)'
+  echo '          "s" for seconds (the default), "m" for minutes, "h" for hours, "d" for days'
   echo '       -r, add --reboot to the dsu command (default no)'
   echo '       -v, verbose mode'
   echo '       -h, this help message'
@@ -73,8 +75,8 @@ fi
 BOOTSTRAP_URL='https://linux.dell.com/repo/hardware/dsu/bootstrap.cgi'
 BOOTSTRAP_FILE=${BOOTSTRAP_URL##*/}  # extract the file name from the URL
 : ${NP:=4}  # number of the simultaneous remote processes/copies
-: ${RN:=8}  # maximum number of the nodes that can be in the reboot / rebooing state
-: ${TIMEOUT:=60}  # timeout for the sleep, see rundsu()
+: ${RN:=8}  # maximum number of the nodes that can be drained or dsu in the progress
+: ${TIMEOUT:=1m}  # timeout for the sleep, see rundsu()
 DSUTEMP='/root/.dsu'  # the action dir
 RD='/root'  # a directory on the remote node
 RUNDSU='rundsu' # temporary script for the remote execution
@@ -83,14 +85,14 @@ RUNDSU='rundsu' # temporary script for the remote execution
 [[ -d $DSUTEMP ]] || mkdir -p $DSUTEMP
 cd $DSUTEMP
 
-verbose NODES: $NODES
-verbose NP: $NP
-verbose RN: $RN
-verbose TIMEOUT: $TIMEOUT
-verbose bootstrap file: $DSUTEMP/$BOOTSTRAP_FILE
+verbose "NODES: $NODES"
+verbose "NP: $NP"
+verbose "RN: $RN"
+verbose "TIMEOUT: $TIMEOUT"
+verbose "bootstrap file: $DSUTEMP/$BOOTSTRAP_FILE"
 
 # get the dell's bootstrap file
-echo "...Downloading $BOOTSTRAP_FILE file" 
+echo "..Downloading $BOOTSTRAP_FILE file" 
 if ! curl -f -s -O $BOOTSTRAP_URL; then
   usage "Can't download  $BOOTSTRAP_URL"
 fi
@@ -100,21 +102,20 @@ sed -i 's/IMPORT_GPG_CONFIRMATION="na"/IMPORT_GPG_CONFIRMATION="yes"/' $BOOTSTRA
 
 # a string like node[2-4,7],gpu6 to a list 'node2 node3 node4 node7 gpu6 ...'
 NODELIST=$(shosts $NODES)
-verbose NODELIST: $NODELIST
+verbose "NODELIST: $NODELIST"
 pdcp_cmd="pdcp -f $NP -b -w $NODES"
-verbose pdcp command: $pdcp_cmd ...
+verbose "pdcp command: $pdcp_cmd ..."
 dsu_cmd="dsu -n --import-public-key $DSUREBOOT"
-verbose DSU command: $dsu_cmd
-
+verbose "DSU command: $dsu_cmd"
 
 ## the action starts here
 
 # copy the bootstrap file over the nodes
-echo "...Copying $BOOTSTRAP_FILE to:  $NODELIST"
+echo "..Copying $BOOTSTRAP_FILE to:  $NODELIST"
 $pdcp_cmd $BOOTSTRAP_FILE $RD/$BOOTSTRAP_FILE
 
 # making a temp executable and run it on the $NODES
-echo "...Creating and copying 'rundsu' to:  $NODELIST"
+echo "..Creating and copying 'rundsu' to:  $NODELIST"
 cat <<EOF > $RUNDSU
 # $(date -R)
 echo '#### RUNNING' $RD/$BOOTSTRAP_FILE 
@@ -126,95 +127,109 @@ $dsu_cmd
 EOF
 $pdcp_cmd $RUNDSU $RD/$RUNDSU
 
+
 # the function that does the actual run
 rundsu() { 
   local NODE=$1 SSHST HELPURL
 
-  echo $NODE: Started at $(date -R)
+  echo "$NODE: Started at $(date -R)"
 
   ssh -o ConnectTimeout=12 $NODE "bash $RD/$RUNDSU"  # actual run
   SSHST=$?  # status of the SSH command (== the latest executed command)
-  verbose $NODE: SSH DSU exit code: $SSHST
+  verbose "$NODE: SSH DSU exit code: $SSHST"
 
   # exit codes for the DSU
   HELPURL='https://www.dell.com/support/manuals/en-us/system-update/dsu_ug_1.8_revamp/dsu-return-codes?guid=guid-a413b447-0dd2-45fb-a60c-7a472e353e30'
 
-  case $SSHST in
+case $SSHST in
     8|26)
       # 8 Reboot is required for the update to be completed successfully
       # 26 Out-of-date updates are selected. For successful updates, reboot is required
-      echo $NODE: DSU run is over, draining for the reboot
+      echo "$NODE: DSU run is over, draining for the reboot"
       scontrol update nodename=$NODE state=drain reason=reboot
     ;;
     0|34)
       # 34 There are no updates found which can be applied
-      echo $NODE: DSU run is over
+      echo "$NODE: DSU run is over"
       if [[ $DSUREBOOT == '--reboot' ]]; then
-        echo $NODE: DSU reboot has been initiated, check the node manually later
-      else echo $NODE: Check the node manually, resume it if needed
+        echo "$NODE: DSU reboot has been initiated, check the node manually later"
+      else echo "$NODE: Check the node manually, resume it if needed"
       fi
       #scontrol update nodename=$NODE state=resume
     ;;
     1|24)
       # 1 means something went wrong, like failure with the catalog
       # 24 Failure in applying updates
-      echo $NODE: DSU run has failed with the exit code: $SSHST
-      echo $NODE: Check the node manually, we do nothing here
+      echo "$NODE: DSU run has failed with the exit code: $SSHST"
+      echo "$NODE: Check the node manually, we do nothing here"
       return 1
     ;;
     *)
-      echo $NODE: DSU run has ended with the non-zero exit code: $SSHST 
-      echo $NODE: Check the node manually, we do nothing here
-      echo see $HELPURL
+      echo "$NODE: DSU run has ended with the non-zero exit code: $SSHST"
+      echo "$NODE: Check the node manually, we do nothing here"
+      echo "see $HELPURL"
       return 1
   esac
-  echo $NODE: Finished at $(date -R)
+  echo "$NODE: Finished at $(date -R)"
+
+  return 0
 }
 
 
-# updating the global var $cnp : a counter for currently running 'rundsu'
-update_cnp() {
-  cnp=$(jobs -p | wc -l)
+# counting currently running 'rundsu' in the bg
+count_bg_jobs() {
+  jobs -r -p | wc -l
 }
 
-# updating the global var $crn : a counter for nodes in the reboot stage
-# note: we count only the nodes in the $NODES set
-update_crn() {
-  crn=$(sinfo -h -n $NODES -t drain -o "%N %E" -N | grep -E 'reboot|rebooting' | sort -u | wc -l)
+# counting SLURM drained nodes with the reboot/rebooting reason
+# note: counts only the nodes in the $NODES set
+count_reboot_nodes() {
+  sinfo -h -n $NODES -t drain -o "%N %E" -N | grep -E 'reboot|rebooting' | sort -u | wc -l
 }
+
+
+# counters intitialization
+cnp=0 crn=0
 
 # going through the NODELIST
-for n in $NODELIST; do
+for node in $NODELIST; do
 
-  # check how many bg jobs we have currently running
-  update_cnp
-  verbose echo running jobs: cnp: $cnp, limit: $NP
-
-  # check number of the $NODES in the reboot|rebooting stage
-  update_crn
-  verbose nodes in reboot: crn: $crn, limit: $RN
-
-  # if $cnp is greater or equal to $NP: sleep
-  # if $crn is greater or equal to $RN: sleep
-  while (( $cnp >= $NP || $crn+$cnp >= $RN )); do
-    sleep $TIMEOUT # timeout between checking the jobs number
-    update_cnp
-    update_crn
-  done # while
-
-  # proceed when the number of jobs is less than $NP
-  # and the number of rebooting nodes is less than RN
-  echo $n: 'DSU run started:' $(date +"%H:%M %d-%m-%Y")
-  LOG="$DSUTEMP/$n.$(date +"%d-%m-%Y").log"
-  echo $n: 'Log file to see progress: ' $LOG
-  # collect log info to a dedicated log per node; send job to a background
-  { if rundsu $n > $LOG; then
-      echo $n: 'DSU run finished:' $(date +"%H:%M %d-%m-%Y"); 
+  # DSU runs 
+  echo "$node: DSU run started: $(date +'%H:%M %d-%m-%Y')"
+  LOG="$DSUTEMP/$node.$(date +"%d-%m-%Y").log"
+  echo "$node: Log file: $LOG"
+  # collect node log info to a dedicated file; send job to a background
+  { if rundsu $node > $LOG; then
+      echo "$node: DSU run finished: $(date +'%H:%M %d-%m-%Y')"
     else
-      echo $n: 'DSU run has failed:' $(date +"%H:%M %d-%m-%Y"); 
-      echo $n: 'Check the log file: ' $LOG
+      echo "$node: DSU run has failed: $(date +'%H:%M %d-%m-%Y')" 
+      echo "$node: Check the log file:  $LOG"
       #exit 1 # make sense to stop execution of the whole script
     fi; } &
+
+
+  # update bg jobs counter
+  cnp=$(count_bg_jobs)
+
+  # update number of the $NODES in the reboot|rebooting stage counter
+  crn=$(count_reboot_nodes)
+
+  verbose "after $node: running jobs: cnp: $cnp, limit: $NP"
+  verbose "after $node: nodes in reboot: crn: $crn, limit: $RN"
+  if (( $cnp >= $NP )); then
+    verbose "NP limit reached $(date +'%H:%M %d-%m') ... sleep"
+  elif (( $crn+$cnp >= $RN )); then
+    verbose "RN limit reached $(date +'%H:%M %d-%m') ... sleep"
+  fi
+
+  # if $cnp is greater or equal to $NP: sleep
+  # if $crn+$cnp is greater or equal to $RN: sleep
+  # note: we consider all $cnp nodes as "potentially drained"
+  while (( $cnp >= $NP || $crn+$cnp >= $RN )); do
+    sleep $TIMEOUT # timeout between checking the jobs number
+    cnp=$(count_bg_jobs)
+    crn=$(count_reboot_nodes)
+  done # while
 
 done # for
 
