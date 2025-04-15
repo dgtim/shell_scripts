@@ -23,14 +23,17 @@ when() {
   date -ud "@$time" +"$(( $time/3600/24 ))d %Hh %Mm %Ss"
 }
 
+ssh_cmd='ssh -o ConnectTimeout=4 -q'
+
 for node in $NODELIST; do
   echo Status of $node
 
   # check connectivity first
   if ping -q -n -c 1 -W 2 $node &>/dev/null; then
     echo '..ping: OK'
-    if ssh -o ConnectTimeout=4 -q $node exit &> /dev/null; then
+    if $ssh_cmd $node exit &> /dev/null; then
       echo '..ssh: OK'
+      echo '..uptime:' $($ssh_cmd $node uptime -p)
     else echo '..ssh: NOPE'
     fi
   else 
