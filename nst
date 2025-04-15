@@ -66,4 +66,8 @@ for node in $NODELIST; do
     echo '..last time the node had jobs:' $(when $TIMESINCE)
   fi
 
+  echo '..last 24h jobs:'
+  sacct -X -n -N $node -Pno state,user -S $(date -d "-1day" '+%Y-%m-%dT%H:%M') -E Now | sort | uniq -cd
+
+
 done
