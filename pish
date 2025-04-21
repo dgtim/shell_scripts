@@ -1,0 +1,103 @@
+#/bin/bash
+
+# continous ping and SSH check
+# useful when you awaiting a node to wake up after the reboot / power up
+
+# Copyright (C) 2020 ivan.tervanto /at/ aalto.fi
+# Released under the GNU General Public License
+
+# make sure clean exit
+trap 'echo; exit' 1 2 3 6 9
+
+usage() {
+  (($#)) && echo -e "\nERROR: $@"
+  echo
+  echo "Usage: ${0##*/} hostname|IP"
+  echo '        checks ping and ssh connection'
+  echo '       -s, disable ssh check, by default enabled'
+  echo '       -e, endless, by default check is up for 4 mins'
+  echo '       -h, this help message'
+  echo
+  exit 1
+}
+
+TIMEOUT=240  # default timeout in seconds
+SSHCHK='yes' # default SSH check is enabled
+
+# getopt formats input into a '$0 options -- args'
+opts=$(getopt "hes" "$@") || usage
+set -- $opts
+
+# extract the options first and leave the args for the later
+while true; do
+  case ${1} in
+    -h) usage ;;
+    -s) SSHCHK='no' ;;
+    -e) unset TIMEOUT ;;
+    --) shift; break ;; # exit when -- is reached
+  esac
+  shift
+done
+
+# by now, we should have left the node entry only
+if (($#==1)); then node=$1
+else usage "No host or IP is given"
+fi
+
+# Progress bar variable
+progress_bar=""
+ssh_cmd='ssh -q -o BatchMode=yes -o ConnectTimeout=2'
+ping_cmd='ping -q -n -c 1 -W 2'
+
+# the script has started on ...
+[[ -n $TIMEOUT ]] && start_time=$(date +%s)
+# by default we assume no ping response
+PINGST=1
+
+# loop till either TIMEOUT is reached or Ctrl-C
+while true; do
+
+  # making TIMEOUT to work
+  if [[ -n $TIMEOUT ]]; then
+    current_time=$(date +%s)
+    if ((current_time - start_time >= TIMEOUT)); then
+      echo -e "\n..timeout ${TIMEOUT}s reached, exit"
+      break
+    fi
+  fi # timeout
+
+  if (( $PINGST != 0 )); then
+    printf "\r%s ping: %s" "$node" "$progress_bar"
+    # check connectivity first
+    $ping_cmd $node &>/dev/null
+    PINGST=$?  # status of the ping command
+    case $PINGST in
+      0) printf "\r%s ping: OK" "$node"
+         progress_bar='' 
+         echo ;;
+      1) # if no ping response
+         progress_bar+='-'
+         sleep 1 ;;
+      *) # ping returns something else in case of issue
+         echo 'ping: FAILED, check the name is correct'
+         exit 1
+    esac
+  else
+    # here we assume that ping is ok
+    if [[ $SSHCHK == 'yes' ]]; then
+      printf "\r%s ssh: %s" "$node" "$progress_bar"
+      $ssh_cmd $node exit
+      SSHST=$?
+      case $SSHST in
+        0) printf "\r%s ssh: OK" "$node"
+           echo
+           break ;;
+        *) # no ssh
+           progress_bar+="-"
+           sleep 1
+      esac
+    else break
+    fi # ssh
+  fi # ping
+
+done # while true
