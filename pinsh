@@ -74,7 +74,7 @@ while true; do
     case $PINGST in
       0) # if ping ok
          printf "\r%s ping: %s OK\n" "$node" "$progress_bar"
-         progress_bar+='' ;;
+         progress_bar='' ;;
       1) # if no ping response
          progress_bar+='-'
          sleep 1 ;;
@@ -86,12 +86,12 @@ while true; do
     # here we assume that ping is ok
     if [[ $SSHCHK == 'yes' ]]; then
       printf "\r%s ssh: %s" "$node" "$progress_bar"
+      [[ -n $TIMEOUT ]] && start_time=$(date +%s) # restart timeout
       $ssh_cmd $node exit
       SSHST=$?
       case $SSHST in
         0) # ssh ok
            printf "\r%s ssh: %s OK\n" "$node" "$progress_bar" 
-           echo
            break ;;
         *) # no ssh
            progress_bar+='-'
