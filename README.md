@@ -17,7 +17,7 @@ See details in the comments
 * tarit -- tar wrapper, again, for the BASH scritpting teaching purpose mainly
 * pdsu -- wrapper for Dell's DSU, runs in parallel on the fixed number of nodes, drains and reboots SLURM nodes
 * nst -- node status: a read-only utility that outputs node status info incl SLURM state
-* pish -- ping and SSH check in one
+* pinsh -- ping and SSH check in one
 
 All of these materails have been used either for the Linux HPC cluster administration purpose or as demo / exsercises for the Linux Shell Basic and Scripting tutorials https://aaltoscicomp.github.io/linux-shell/
 
