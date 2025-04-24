@@ -3,7 +3,7 @@
 # continous ping and SSH check
 # useful when you awaiting a node to wake up after the reboot / power up
 
-# Copyright (C) 2020 ivan.tervanto /at/ aalto.fi
+# Copyright (C) 2025 ivan.tervanto /at/ aalto.fi
 # Released under the GNU General Public License
 
 # make sure clean exit
@@ -72,9 +72,9 @@ while true; do
     $ping_cmd $node &>/dev/null
     PINGST=$?  # status of the ping command
     case $PINGST in
-      0) printf "\r%s ping: OK" "$node"
-         progress_bar='' 
-         echo ;;
+      0) # if ping ok
+         printf "\r%s ping: %s OK\n" "$node" "$progress_bar"
+         progress_bar+='' ;;
       1) # if no ping response
          progress_bar+='-'
          sleep 1 ;;
@@ -89,11 +89,12 @@ while true; do
       $ssh_cmd $node exit
       SSHST=$?
       case $SSHST in
-        0) printf "\r%s ssh: OK" "$node"
+        0) # ssh ok
+           printf "\r%s ssh: %s OK\n" "$node" "$progress_bar" 
            echo
            break ;;
         *) # no ssh
-           progress_bar+="-"
+           progress_bar+='-'
            sleep 1
       esac
     else break
