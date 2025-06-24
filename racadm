@@ -28,7 +28,10 @@ if (($#<2)); then
   echo '  Selected RACADM commands:'
   echo '    tag | getsvctag'
   echo '    sel | getsel -o'
-  echo '    tsr  # techsupreport'
+  echo '    tsr # supportassist collect -t SysInfo,TTYLog'
+  echo '    tsr Debug,osAppAll,TelemetryReports # other report options'
+  echo '    oldtsr # techsupreport collect -t SysInfo,TTYLog'
+  echo '    supportassist accepteula  # needed by tsr'
   echo '    clrsel'
   echo '    getsysinfo # incl MAC addresses'
   echo '    swinventory'
@@ -41,14 +44,14 @@ if (($#<2)); then
   echo '    ... alias to  set iDRAC.serverboot.FirstBootDevice BIOS|F10|VCD-DVD'
   echo '    ... # one time boot to BIOS|LifecycleController|virtual iso'
   echo '    ... # assuming iDRAC.serverboot.BootOnce enabled'
-  echo '    jobqueue view|delete -i <jobid>'
+  echo '    jobqueue view|delete -i <jobid> | --all'
   echo '    jobqueue create Bios.Setup.1-1 -r forced # create a job'
   echo '    racreset  # reset idrac'
   echo '    update -f <filename.EXE>'
   echo '    get -f file.xml -t xml # export config to a file.xml'
   echo '    get BIOS.ProcSettings # CPU settings at BIOS'
   echo '    get BIOS.SysProfileSettings # see SysProfile='
-  echo '    set BIOS.SysProfileSettings PerfOptimized'
+  echo '    set BIOS.SysProfileSettings.SysProfile PerfOptimized'
   echo '    get BIOS.BiosBootSettings # boot settings'
   echo '    get System.Power.Realtime.Power'
   echo '    get iDRAC.NIC.Selection # check if idrac NIC is in a dedicated mode'
@@ -86,16 +89,34 @@ clean() { tr -d '\r' | awk '{$1=$1};1' | grep -v '^\s*$'; }
 case $cmd in
   sel) $parallel $racadm {}-ipmi getsel -o -- $nodelist ;;
   tag) $parallel $racadm {}-ipmi getsvctag -- $nodelist | clean ;;
-  tsr)
+  tsr*)
+    subcmd="${*:3}"
     # one at the time
+    for node in $nodelist; do
+      tag=$(${0##./} ${node} tag)
+      echo Launching TSR request on the ${node} ${tag} ...
+      if [[ -n $subcmd ]]; then
+        $racadm ${node}-ipmi supportassist collect -t $subcmd
+      else
+        $racadm ${node}-ipmi supportassist collect -t SysInfo,TTYLog
+      fi
+      echo Check that the TSR report is 100% completed:
+      echo "  ${0##*/} ${node} jobqueue view -i <Job ID>"
+      echo and download it:
+      echo "  ${0##*/} ${node} supportassist exportlastcollection -f ${node}.${tag}_$(date +'%Y-%m-%d').zip"
+      echo; echo
+    done
+  ;;
+  oldtsr)
+    # this is for the nodes that do not support modern SupportAssist
     for node in $nodelist; do
       tag=$(${0##./} ${node} tag)
       echo Launching TSR request on the ${node} ${tag} ...
       $racadm ${node}-ipmi  techsupreport collect -t SysInfo,TTYLog
       echo Check that the TSR report is 100% completed:
-      echo "  ${0##./} ${node} jobqueue view -i <Job ID>"
+      echo "  ${0##*/} ${node} jobqueue view -i <Job ID>"
       echo and download it:
-      echo "  ${0##./} ${node} techsupreport export -f ${node}.${tag}_$(date +'%Y-%m-%d').zip"
+      echo "  ${0##*/} ${node} techsupreport export -f ${node}.${tag}_$(date +'%Y-%m-%d').zip"
       echo; echo
     done
   ;;
