@@ -28,8 +28,8 @@ if (($#<2)); then
   echo '  Selected RACADM commands:'
   echo '    tag | getsvctag'
   echo '    sel | getsel -o'
-  echo '    tsr # supportassist collect -t SysInfo,TTYLog'
-  echo '    tsr Debug,osAppAll,TelemetryReports # other report options'
+  echo '    tsr # supportassist collect -t SysInfo,TTYLog,Debug'
+  echo '    tsr osAppAll,TelemetryReports # other report options'
   echo '    oldtsr # techsupreport collect -t SysInfo,TTYLog'
   echo '    supportassist accepteula  # needed by tsr'
   echo '    clrsel'
@@ -38,6 +38,7 @@ if (($#<2)); then
   echo '    getversion [-f bios|idrac]'
   echo '    power reset|on|off|cycle|status'
   echo '    ... alias to: serveraction [powercycle|powerdown|powerup|hardreset|powerstatus]'
+  echo '    power fullcycle # Virtual power drain'
   echo '    led [on|off]'
   echo '    ... alias to: getled, setled -l 0|1'
   echo '    boot bios|lc|iso  # one-time boot'
@@ -98,13 +99,13 @@ case $cmd in
       if [[ -n $subcmd ]]; then
         $racadm ${node}-ipmi supportassist collect -t $subcmd
       else
-        $racadm ${node}-ipmi supportassist collect -t SysInfo,TTYLog
+        $racadm ${node}-ipmi supportassist collect -t SysInfo,TTYLog,Debug
       fi
       echo Check that the TSR report is 100% completed:
       echo "  ${0##*/} ${node} jobqueue view -i <Job ID>"
       echo and download it:
       echo "  ${0##*/} ${node} supportassist exportlastcollection -f ${node}.${tag}_$(date +'%Y-%m-%d').zip"
-      echo; echo
+      echo
     done
   ;;
   oldtsr)
@@ -120,12 +121,18 @@ case $cmd in
       echo; echo
     done
   ;;
+
   power*)
     case ${3} in
       reset) action='hardreset' ;;
       on) action='powerup' ;;
       off) action='powerdown' ;;
       cycle) action='powercycle' ;;
+      fullcycle) 
+        $parallel $racadm {}-ipmi set BIOS.MiscSettings.PowerCycleRequest FullPowerCycle -- $nodelist | clean
+        $parallel $racadm {}-ipmi jobqueue create BIOS.Setup.1-1 -- $nodelist | clean
+        action='powercycle'
+      ;;
       *) action='powerstatus' ;;
     esac
     $parallel $racadm {}-ipmi serveraction $action -- $nodelist | clean
